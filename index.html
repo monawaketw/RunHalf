@@ -435,15 +435,30 @@ function speakPhrase(pi){
   var rate=Math.min(2,Math.max(0.5,(1/secPerChar)/4));
   var u=new SpeechSynthesisUtterance(spoken(phrase));
   u.voice=v;u.lang=v.lang;u.rate=rate;
-  var stepMs=1000/(4*rate), done=false;
-  function next(){
+  // sp.k = 這個聲音在速度 1 時，念一個字實際花幾毫秒；每念完一句就重新校正
+  if(!sp.k)sp.k=250;
+  var stepMs=sp.k/rate, done=false, startT=0;
+  function next(ev){
     if(done||my!==sp.token)return;done=true;
     clearInterval(sp.timer);clearTimeout(sp.guard);
+    if(ev&&ev.type==='end'&&startT&&phrase.length>=3){
+      var per=(Date.now()-startT)/phrase.length*rate;
+      if(per>80&&per<800)sp.k=sp.k*0.4+per*0.6;
+    }
+    if(R){R.charIdx=start+phrase.length-1;renderLine();}
     var np=pi+1;if(np>=PHRASES.length){np=0;R.times++;}
     setTimeout(function(){if(my===sp.token)speakPhrase(np);},secPerChar*500);
   }
+  // 有些手機會回報「現在念到第幾個字」，有的話就直接對齊
+  u.onboundary=function(e){
+    if(my!==sp.token||!R||typeof e.charIndex!=='number')return;
+    var i=start+Math.min(e.charIndex,phrase.length-1);
+    if(i!==R.charIdx){R.charIdx=i;renderLine();}
+  };
   u.onstart=function(){
     if(my!==sp.token)return;
+    startT=Date.now();
+    if(R){R.charIdx=start;renderLine();}
     sp.timer=setInterval(function(){if(R&&R.charIdx<start+phrase.length-1){R.charIdx++;renderLine();}},stepMs);
   };
   u.onend=next;u.onerror=next;
@@ -452,7 +467,7 @@ function speakPhrase(pi){
 }
 function currentPhrase(){return R&&R.charIdx>=0?CHARS[Math.min(R.charIdx,TOTAL-1)].pi:0;}
 $('voiceSel').onchange=function(){
-  store.voice=this.value;save();
+  store.voice=this.value;save();sp.k=0;
   if(!R||R.ended)return;
   stopSpeech();
   if(isVoice()){unlockIOSAudio();speakPhrase(currentPhrase());}
