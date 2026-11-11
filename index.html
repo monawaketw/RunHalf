@@ -1227,7 +1227,7 @@ $('shareClose').onclick=function(){$('shareView').hidden=true;};
 
 /* ---------- 大家一起的累積（匿名） ---------- */
 // 把 Google Apps Script 部署後的網址貼在這裡；空白就表示還沒開
-var STATS_URL='';
+var STATS_URL='https://script.google.com/macros/s/AKfycbwVwaXrpk_rd7RfkqgaRxfGyfUglKPQZK1aJTFv1O3jYtg0EkENLzn6DI7s_Z_JE5F2/exec';
 if(!store.uid){store.uid=(window.crypto&&crypto.randomUUID)?crypto.randomUUID():('u'+Date.now().toString(36)+Math.random().toString(36).slice(2));save();}
 function statsOn(){return !!STATS_URL&&store.shareStats!==false;}
 function report(dt,dk,type){
