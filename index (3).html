@@ -1,0 +1,499 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="theme-color" content="#1a1b2e">
+<title>跑伴</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&family=Noto+Serif+TC:wght@500;700&display=swap">
+<style>
+/* 單一深色世界：伴夢伴醒的夜空底、金色點綴；手機直式、一欄 */
+:root{
+  --ink:#1a1b2e; --deep:#12132a; --panel:#262842; --line:#3a3c5c;
+  --gold:#c8a84b; --gold-soft:#2e2a24; --text:#f3efe2; --muted:#b8b9cc; --dim:#8a8aa6;
+  --sun:#F5A623; --sunchest:#FFD700; --night:#3D3580;
+  --serif:'Noto Serif TC','Songti TC','PMingLiU',serif;
+  --sans:'Noto Sans TC','PingFang TC','Microsoft JhengHei',system-ui,sans-serif;
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--ink);color:var(--text);font-family:var(--sans);-webkit-tap-highlight-color:transparent}
+body{min-height:100vh;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+[hidden]{display:none!important}
+.wrap{max-width:440px;margin:0 auto;padding-left:max(18px,env(safe-area-inset-left,0px));padding-right:max(18px,env(safe-area-inset-right,0px));padding-block:20px 32px;display:flex;flex-direction:column;gap:16px}
+h1{font-family:var(--serif);color:var(--gold);font-size:34px;letter-spacing:4px;margin:0}
+h2{font-size:15px;font-weight:500;margin:0}
+.muted{color:var(--muted)} .small{font-size:12px}
+.panel{background:var(--panel);border-radius:18px;padding:16px}
+.row{display:flex;gap:10px;align-items:center}
+.between{justify-content:space-between}
+.grid3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
+.stat .k{font-size:12px;color:var(--muted)}
+.stat .v{font-size:22px;font-weight:700;margin-top:4px;font-variant-numeric:tabular-nums}
+.stat .v span{font-size:12px;font-weight:400;color:var(--muted)}
+button{font-family:inherit;cursor:pointer}
+button:focus-visible,input:focus-visible{outline:2px solid var(--gold);outline-offset:2px}
+.chip{min-height:44px;padding:8px 14px;border-radius:22px;border:1.5px solid var(--line);background:transparent;color:var(--text);font-size:14px}
+.chip[aria-pressed="true"]{border-color:var(--gold);background:var(--gold-soft)}
+.seg{display:flex;gap:8px}
+.seg button{flex:1;min-height:60px;border-radius:14px;border:1.5px solid var(--line);background:var(--panel);color:var(--text);font-size:14px;padding:6px}
+.seg button small{display:block;font-size:11px;color:var(--muted);margin-top:2px}
+.seg button[aria-pressed="true"]{border-color:var(--gold);background:var(--gold-soft)}
+.seg button[aria-pressed="true"] small{color:var(--gold)}
+.big{width:150px;height:150px;border-radius:50%;border:none;background:var(--gold);color:var(--ink);font-family:var(--serif);font-size:24px;font-weight:700;letter-spacing:4px;box-shadow:0 0 0 10px rgba(200,168,75,.18);align-self:center;margin-top:6px}
+.btn{min-height:52px;border-radius:26px;border:none;background:var(--gold);color:var(--ink);font-size:16px;font-weight:700;padding:0 20px}
+.btn.ghost{background:transparent;border:1.5px solid var(--line);color:var(--text);font-weight:400}
+.round{width:52px;height:52px;border-radius:50%;border:1.5px solid var(--line);background:transparent;color:var(--text);font-size:22px;flex-shrink:0}
+input[type=text],input[type=number]{width:100%;min-height:46px;border-radius:12px;border:1.5px solid var(--line);background:var(--deep);color:var(--text);font-family:inherit;font-size:16px;padding:0 12px}
+label{font-size:12px;color:var(--muted);display:block;margin-bottom:6px}
+.list{display:flex;flex-direction:column;gap:8px}
+.item{display:flex;justify-content:space-between;gap:10px;font-size:13px;padding:10px 0;border-top:1px solid var(--line)}
+.item:first-child{border-top:none}
+.num{font-variant-numeric:tabular-nums}
+
+/* 跑步中 */
+#run{background:var(--deep);min-height:100vh}
+.dist{text-align:center;font-size:60px;font-weight:700;font-variant-numeric:tabular-nums;line-height:1}
+.sutra{text-align:center;padding:20px 14px}
+.line{font-family:var(--serif);font-size:28px;line-height:1.5;min-height:42px;display:flex;flex-wrap:wrap;justify-content:center;gap:2px}
+.line .c{color:var(--text);transition:color .15s}
+.line .c.done{color:var(--dim)}
+.line .c.now{color:var(--gold);font-weight:700;transform:scale(1.15);display:inline-block}
+.next{font-family:var(--serif);font-size:15px;color:var(--muted);margin-top:8px;min-height:22px}
+.full{font-family:var(--serif);font-size:17px;line-height:2;color:#e8e2cc;text-align:left;max-height:40vh;overflow-y:auto}
+.status{font-size:12px;color:var(--muted);text-align:center;min-height:16px}
+.warn{color:var(--sun)}
+
+/* 口袋模式 */
+#pocket{position:fixed;inset:0;background:#000;z-index:50;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;color:#4a4a5a;user-select:none;-webkit-user-select:none;touch-action:none}
+#pocket .t{font-size:18px;font-variant-numeric:tabular-nums}
+#pocket .hint{font-size:12px}
+#pocketBar{width:120px;height:3px;background:#222;border-radius:2px;overflow:hidden}
+#pocketBar i{display:block;height:100%;width:0;background:#6a5a2a}
+
+/* 迴向卡 */
+.card{position:relative;background:var(--deep);border-radius:20px;padding:30px 22px 24px;text-align:center}
+.card .corner{position:absolute;width:18px;height:18px;border-color:var(--gold);border-style:solid;border-width:0}
+.card .tl{top:12px;left:12px;border-top-width:2px;border-left-width:2px}
+.card .tr{top:12px;right:12px;border-top-width:2px;border-right-width:2px}
+.card .bl{bottom:12px;left:12px;border-bottom-width:2px;border-left-width:2px}
+.card .br{bottom:12px;right:12px;border-bottom-width:2px;border-right-width:2px}
+.card .nums{display:flex;justify-content:center;gap:22px;margin-top:10px}
+.card .nums b{display:block;font-size:26px;color:var(--gold);font-variant-numeric:tabular-nums}
+.card .nums span{font-size:11px;color:var(--muted)}
+.card .to{font-family:var(--serif);font-size:18px;line-height:1.8;margin-top:16px}
+@media (prefers-reduced-motion:reduce){.line .c{transition:none}}
+</style>
+</head>
+<body>
+
+<!-- 首頁 -->
+<section id="home">
+<div class="wrap">
+  <div class="row between" style="align-items:flex-end">
+    <div><div class="small muted" id="today"></div><h1>跑伴</h1></div>
+    <div class="small muted">伴夢伴醒</div>
+  </div>
+
+  <div class="grid3">
+    <div class="panel stat"><div class="k">累積距離</div><div class="v" id="totKm">0<span> 公里</span></div></div>
+    <div class="panel stat"><div class="k">心經</div><div class="v" id="totTimes">0<span> 遍</span></div></div>
+    <div class="panel stat"><div class="k">跑伴次數</div><div class="v" id="totRuns">0<span> 次</span></div></div>
+  </div>
+
+  <div>
+    <div class="row between" style="margin-bottom:10px"><h2>今天迴向給</h2><button class="small" id="addToggle" style="background:none;border:none;color:var(--gold);min-height:44px">＋ 新增</button></div>
+    <div class="row" id="people" style="flex-wrap:wrap;gap:8px"></div>
+    <form id="addForm" class="panel" hidden style="margin-top:10px;display:flex;flex-direction:column;gap:10px">
+      <div><label for="newName">想祝福的人</label><input type="text" id="newName" maxlength="12" placeholder="例如：媽媽"></div>
+      <div><label for="newWish">想對他說的祝福</label><input type="text" id="newWish" maxlength="24" placeholder="例如：願她身體平安"></div>
+      <button class="btn" type="submit">加入</button>
+    </form>
+  </div>
+
+  <div>
+    <h2 style="margin-bottom:10px">今天想怎麼跑</h2>
+    <div class="seg" id="modes">
+      <button data-mode="follow" aria-pressed="true">跟著念<small>木魚隨步頻</small></button>
+      <button data-mode="self" aria-pressed="false">自己背<small>念完按一下</small></button>
+      <button data-mode="quiet" aria-pressed="false">安靜走<small>只記錄</small></button>
+    </div>
+  </div>
+
+  <button class="big" id="startBtn">開始<br>跑伴</button>
+  <div class="status" id="homeStatus"></div>
+
+  <div class="panel">
+    <h2 style="margin-bottom:6px">最近的跑伴</h2>
+    <div class="list" id="recent"></div>
+  </div>
+  <p class="small muted" style="margin:0;line-height:1.7">測試版：紀錄存在這支手機的瀏覽器裡。建議用「加入主畫面」打開，資料比較不會被清掉。</p>
+</div>
+</section>
+
+<!-- 跑步中 -->
+<section id="run" hidden>
+<div class="wrap">
+  <div class="row between small muted"><div>迴向給 <span style="color:var(--gold)" id="runTo"></span></div><div id="runMode"></div></div>
+  <div>
+    <div class="dist" id="rDist">0.00</div>
+    <div class="small muted" style="text-align:center;margin-top:4px">公里</div>
+  </div>
+  <div class="grid3" style="text-align:center">
+    <div><div class="num" style="font-size:20px;font-weight:500" id="rTime">00:00</div><div class="small muted">時間</div></div>
+    <div><div class="num" style="font-size:20px;font-weight:500" id="rPace">--</div><div class="small muted">配速</div></div>
+    <div><div class="num" style="font-size:20px;font-weight:500" id="rSteps">0</div><div class="small muted">步數</div></div>
+  </div>
+  <div class="status" id="gpsStatus">正在找 GPS…</div>
+
+  <div class="panel sutra" id="sutraBox">
+    <div class="small muted" style="margin-bottom:10px">般若波羅蜜多心經 · 第 <span id="roundNo">1</span> 遍</div>
+    <div id="followView">
+      <div class="line" id="line"></div>
+      <div class="next" id="nextLine"></div>
+    </div>
+    <div class="full" id="fullText" hidden></div>
+  </div>
+
+  <div class="panel" id="tempoBox">
+    <div class="row between">
+      <div>
+        <div class="small muted">朗誦節奏 <span id="cadNote"></span></div>
+        <div style="font-size:24px;font-weight:700;color:var(--gold)" class="num"><span id="bpmShow">120</span> <span class="small muted" style="font-weight:400">步/分</span></div>
+      </div>
+      <div class="row">
+        <button class="round" id="slower" aria-label="放慢">−</button>
+        <button class="round" id="faster" aria-label="加快">＋</button>
+      </div>
+    </div>
+    <div class="row" style="margin-top:12px;gap:8px;flex-wrap:wrap">
+      <button class="chip" id="per1" aria-pressed="true">一步一字</button>
+      <button class="chip" id="per2" aria-pressed="false">兩步一字</button>
+      <button class="chip" id="followCad" aria-pressed="true">跟隨步頻</button>
+      <button class="chip" id="sound" aria-pressed="true">木魚聲</button>
+    </div>
+    <div class="small muted" style="margin-top:10px">這個節奏約 <span id="perRound">-</span> 念完一遍</div>
+  </div>
+
+  <div class="row" style="gap:10px">
+    <button class="btn ghost" id="pauseBtn" style="flex:1">暫停</button>
+    <button class="btn" id="plusBtn" style="flex:1.4">念完一遍 ＋1</button>
+  </div>
+  <div class="row" style="gap:10px">
+    <button class="btn ghost" id="pocketBtn" style="flex:1">口袋模式</button>
+    <button class="btn ghost" id="endBtn" style="flex:1">結束</button>
+  </div>
+</div>
+</section>
+
+<!-- 口袋模式 -->
+<div id="pocket" hidden>
+  <div class="t" id="pTime">00:00</div>
+  <div class="t" id="pDist">0.00 公里</div>
+  <div class="hint">長按 2 秒回來</div>
+  <div id="pocketBar"><i id="pocketFill"></i></div>
+</div>
+
+<!-- 結束 -->
+<section id="done" hidden>
+<div class="wrap">
+  <div style="text-align:center">
+    <div class="small muted">今天的跑伴完成了</div>
+    <div style="font-family:var(--serif);font-size:24px;font-weight:700;margin-top:6px">辛苦了，也謝謝你。</div>
+  </div>
+
+  <div class="panel" id="editBox" style="display:flex;flex-direction:column;gap:12px">
+    <div class="small muted" id="gapNote" hidden>中途有鎖屏，那段距離是用直線估算的，可以對照手錶或手機健康 app 修正。</div>
+    <div class="row">
+      <div style="flex:1"><label for="eKm">公里</label><input type="number" id="eKm" step="0.01" min="0" inputmode="decimal"></div>
+      <div style="flex:1"><label for="eTimes">心經遍數</label><input type="number" id="eTimes" step="1" min="0" inputmode="numeric"></div>
+    </div>
+    <div><label for="eWish">迴向的話</label><input type="text" id="eWish" maxlength="24"></div>
+    <button class="btn" id="saveBtn">存下來，做成迴向卡</button>
+  </div>
+
+  <div id="cardWrap" hidden style="display:flex;flex-direction:column;gap:12px">
+    <div class="card">
+      <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+      <svg width="150" height="70" viewBox="0 0 150 70" role="img" aria-label="太陽鴿與夜鴿並肩">
+        <ellipse cx="50" cy="44" rx="26" ry="20" fill="#F5A623"/><circle cx="38" cy="30" r="12" fill="#F5A623"/><circle cx="35" cy="28" r="2" fill="#3E2000"/><circle cx="54" cy="46" r="7" fill="#FFD700"/>
+        <ellipse cx="100" cy="44" rx="26" ry="20" fill="#3D3580"/><circle cx="112" cy="30" r="12" fill="#3D3580"/><circle cx="115" cy="28" r="2" fill="#f3efe2"/><path d="M96 40 a7 7 0 1 0 6 11 a5.5 5.5 0 1 1 -6 -11 z" fill="#C8A84B"/>
+      </svg>
+      <div class="small muted" style="margin-top:12px" id="cDate"></div>
+      <div class="nums">
+        <div><b id="cKm">0</b><span>公里</span></div>
+        <div><b id="cTimes">0</b><span>遍心經</span></div>
+        <div><b id="cMin">0</b><span>分鐘</span></div>
+      </div>
+      <div class="to">迴向給 <span id="cTo"></span><br><span style="color:#e8e2cc" id="cWish"></span></div>
+      <div style="width:40px;height:1px;background:var(--gold);margin:18px auto 12px"></div>
+      <div class="small muted" style="letter-spacing:2px">跑伴 · 伴夢伴醒</div>
+    </div>
+    <p class="small muted" style="text-align:center;margin:0">截圖就可以傳給他。</p>
+    <button class="btn ghost" id="homeBtn">回首頁</button>
+  </div>
+</div>
+</section>
+
+<script>
+(function(){
+'use strict';
+
+/* ---------- 經文（玄奘譯本） ---------- */
+var SUTRA='觀自在菩薩，行深般若波羅蜜多時，照見五蘊皆空，度一切苦厄。舍利子，色不異空，空不異色，色即是空，空即是色，受想行識，亦復如是。舍利子，是諸法空相，不生不滅，不垢不淨，不增不減。是故空中無色，無受想行識，無眼耳鼻舌身意，無色聲香味觸法，無眼界，乃至無意識界，無無明，亦無無明盡，乃至無老死，亦無老死盡。無苦集滅道，無智亦無得。以無所得故，菩提薩埵，依般若波羅蜜多故，心無罣礙，無罣礙故，無有恐怖，遠離顛倒夢想，究竟涅槃。三世諸佛，依般若波羅蜜多故，得阿耨多羅三藐三菩提。故知般若波羅蜜多，是大神咒，是大明咒，是無上咒，是無等等咒，能除一切苦，真實不虛。故說般若波羅蜜多咒，即說咒曰：揭諦揭諦，波羅揭諦，波羅僧揭諦，菩提薩婆訶。';
+var PHRASES=SUTRA.split(/[，。：]/).filter(function(s){return s.length;});
+var CHARS=[]; PHRASES.forEach(function(p,pi){for(var i=0;i<p.length;i++)CHARS.push({pi:pi,ci:i});});
+var TOTAL=CHARS.length;
+
+/* ---------- 儲存 ---------- */
+var KEY='paoban-v1';
+var store={people:[{id:'all',name:'一切眾生',wish:'願大家都好好的',km:0,times:0}],runs:[],current:'all',mode:'follow',bpm:120,per:1};
+try{var raw=localStorage.getItem(KEY);if(raw){var s=JSON.parse(raw);for(var k in s)store[k]=s[k];}}catch(e){}
+function save(){try{localStorage.setItem(KEY,JSON.stringify(store));}catch(e){}}
+function person(id){for(var i=0;i<store.people.length;i++)if(store.people[i].id===id)return store.people[i];return store.people[0];}
+
+var $=function(id){return document.getElementById(id);};
+function show(id){['home','run','done'].forEach(function(s){$(s).hidden=(s!==id);});window.scrollTo(0,0);}
+function fmtTime(sec){sec=Math.max(0,Math.floor(sec));var h=Math.floor(sec/3600),m=Math.floor(sec%3600/60),s=sec%60;var mm=(m<10?'0':'')+m,ss=(s<10?'0':'')+s;return h?h+':'+mm+':'+ss:mm+':'+ss;}
+function fmtPace(secPerKm){if(!isFinite(secPerKm)||secPerKm<=0||secPerKm>3600)return'--';var m=Math.floor(secPerKm/60),s=Math.round(secPerKm%60);if(s===60){m++;s=0;}return m+"'"+(s<10?'0':'')+s+'"';}
+
+/* ---------- 首頁 ---------- */
+function renderHome(){
+  var d=new Date();$('today').textContent=(d.getMonth()+1)+'月'+d.getDate()+'日 · 星期'+'日一二三四五六'[d.getDay()];
+  var km=0,times=0;store.runs.forEach(function(r){km+=r.km;times+=r.times;});
+  $('totKm').innerHTML=km.toFixed(1)+'<span> 公里</span>';
+  $('totTimes').innerHTML=times+'<span> 遍</span>';
+  $('totRuns').innerHTML=store.runs.length+'<span> 次</span>';
+  var box=$('people');box.textContent='';
+  store.people.forEach(function(p){
+    var b=document.createElement('button');b.className='chip';b.type='button';
+    b.setAttribute('aria-pressed',String(p.id===store.current));
+    b.textContent=p.name+(p.km?' · '+p.km.toFixed(1)+'km':'');
+    b.onclick=function(){store.current=p.id;save();renderHome();};
+    box.appendChild(b);
+  });
+  Array.prototype.forEach.call(document.querySelectorAll('#modes button'),function(b){b.setAttribute('aria-pressed',String(b.dataset.mode===store.mode));});
+  var rec=$('recent');rec.textContent='';
+  var last=store.runs.slice(-5).reverse();
+  if(!last.length){var e=document.createElement('div');e.className='small muted';e.textContent='還沒有紀錄。第一次跑完，這裡會出現你的第一筆。';rec.appendChild(e);}
+  last.forEach(function(r){
+    var it=document.createElement('div');it.className='item';
+    var a=document.createElement('span');a.textContent=r.date+' · 給 '+r.to;
+    var b=document.createElement('span');b.className='num muted';b.textContent=r.km.toFixed(2)+' km · '+r.times+' 遍';
+    it.appendChild(a);it.appendChild(b);rec.appendChild(it);
+  });
+}
+$('addToggle').onclick=function(){$('addForm').hidden=!$('addForm').hidden;if(!$('addForm').hidden)$('newName').focus();};
+$('addForm').addEventListener('submit',function(e){
+  e.preventDefault();var n=$('newName').value.trim();if(!n)return;
+  var p={id:'p'+Date.now(),name:n,wish:$('newWish').value.trim()||'願他平安自在',km:0,times:0};
+  store.people.push(p);store.current=p.id;save();$('newName').value='';$('newWish').value='';$('addForm').hidden=true;renderHome();
+});
+Array.prototype.forEach.call(document.querySelectorAll('#modes button'),function(b){b.onclick=function(){store.mode=b.dataset.mode;save();renderHome();};});
+
+/* ---------- 跑步狀態 ---------- */
+var R=null, timerId=null, geoId=null, wakeLock=null, audio=null, schedId=null;
+
+function newRun(){
+  return {start:Date.now(),pausedTotal:0,pausedAt:0,dist:0,steps:0,lastPos:null,gap:false,times:0,charIdx:-1,stepTimes:[],cadence:0,ended:false};
+}
+
+/* 計步：用加速度找步伐的高峰 */
+var mot={smooth:9.8,base:9.8,above:false,last:0};
+function onMotion(e){
+  if(!R||R.pausedAt)return;
+  var a=e.accelerationIncludingGravity;if(!a||a.x==null)return;
+  var m=Math.sqrt(a.x*a.x+a.y*a.y+a.z*a.z);
+  mot.smooth=mot.smooth*0.75+m*0.25;
+  mot.base=mot.base*0.98+m*0.02;
+  var d=mot.smooth-mot.base, now=Date.now();
+  if(!mot.above&&d>1.1&&now-mot.last>260){mot.above=true;mot.last=now;R.steps++;R.stepTimes.push(now);}
+  else if(mot.above&&d<0.2){mot.above=false;}
+}
+function updateCadence(){
+  var now=Date.now();R.stepTimes=R.stepTimes.filter(function(t){return now-t<10000;});
+  if(R.stepTimes.length>=8){var span=(now-R.stepTimes[0])/1000;R.cadence=Math.round(R.stepTimes.length/Math.max(span,3)*60);}
+  else R.cadence=0;
+}
+
+/* GPS */
+function hav(a,b){var r=6371000,t=Math.PI/180;var dLat=(b.lat-a.lat)*t,dLon=(b.lon-a.lon)*t;var x=Math.sin(dLat/2)*Math.sin(dLat/2)+Math.cos(a.lat*t)*Math.cos(b.lat*t)*Math.sin(dLon/2)*Math.sin(dLon/2);return 2*r*Math.asin(Math.sqrt(x));}
+function onPos(p){
+  if(!R||R.ended)return;
+  var acc=Math.round(p.coords.accuracy);
+  if(acc>40){$('gpsStatus').textContent='GPS 訊號偏弱（誤差約 '+acc+' 公尺），先往空曠處走走';return;}
+  $('gpsStatus').textContent='GPS 正常 · 誤差約 '+acc+' 公尺';
+  var cur={lat:p.coords.latitude,lon:p.coords.longitude,t:p.timestamp||Date.now()};
+  if(R.pausedAt){R.lastPos=null;return;}
+  if(!R.lastPos){R.lastPos=cur;return;}
+  var d=hav(R.lastPos,cur), dt=(cur.t-R.lastPos.t)/1000;
+  if(d<4)return;
+  if(dt>0&&d/dt>7){if(dt<30)return;}
+  if(dt>30)R.gap=true;
+  R.dist+=d;R.lastPos=cur;
+}
+function onGeoErr(e){$('gpsStatus').innerHTML='<span class="warn">'+(e.code===1?'沒有拿到定位權限，請到設定允許這個網頁使用位置':'暫時找不到 GPS，距離之後可以手動補')+'</span>';}
+
+/* 螢幕不自動鎖 */
+async function keepAwake(){try{if('wakeLock' in navigator){wakeLock=await navigator.wakeLock.request('screen');}}catch(e){}}
+document.addEventListener('visibilitychange',function(){if(R&&!R.ended&&document.visibilityState==='visible')keepAwake();});
+
+/* 木魚聲 */
+function knock(t){
+  var ctx=audio.ctx;
+  var o=ctx.createOscillator(),g=ctx.createGain();
+  o.type='sine';o.frequency.setValueAtTime(820,t);o.frequency.exponentialRampToValueAtTime(520,t+0.08);
+  g.gain.setValueAtTime(0.0001,t);g.gain.exponentialRampToValueAtTime(0.7,t+0.004);g.gain.exponentialRampToValueAtTime(0.0001,t+0.16);
+  o.connect(g);g.connect(ctx.destination);o.start(t);o.stop(t+0.18);
+  var o2=ctx.createOscillator(),g2=ctx.createGain();
+  o2.type='triangle';o2.frequency.setValueAtTime(1650,t);
+  g2.gain.setValueAtTime(0.0001,t);g2.gain.exponentialRampToValueAtTime(0.18,t+0.003);g2.gain.exponentialRampToValueAtTime(0.0001,t+0.05);
+  o2.connect(g2);g2.connect(ctx.destination);o2.start(t);o2.stop(t+0.06);
+}
+function currentBpm(){return (store.follow!==false&&R&&R.cadence>=60)?R.cadence:store.bpm;}
+function interval(){return 60/currentBpm()*store.per;}
+function scheduler(){
+  if(!R||R.pausedAt||store.mode!=='follow')return;
+  var ctx=audio.ctx;
+  if(audio.next<ctx.currentTime-0.5)audio.next=ctx.currentTime+0.1;
+  while(audio.next<ctx.currentTime+0.12){
+    if(store.sound!==false)knock(audio.next);
+    var delay=Math.max(0,(audio.next-ctx.currentTime)*1000);
+    setTimeout(advanceChar,delay);
+    audio.next+=interval();
+  }
+}
+function advanceChar(){
+  if(!R||R.ended)return;
+  R.charIdx++;
+  if(R.charIdx>=TOTAL){R.charIdx=0;R.times++;}
+  renderLine();
+}
+function renderLine(){
+  var idx=Math.max(0,R.charIdx), c=CHARS[idx], phrase=PHRASES[c.pi];
+  var box=$('line');box.textContent='';
+  for(var i=0;i<phrase.length;i++){var s=document.createElement('span');s.className='c'+(i<c.ci?' done':'')+(i===c.ci&&R.charIdx>=0?' now':'');s.textContent=phrase[i];box.appendChild(s);}
+  $('nextLine').textContent=PHRASES[c.pi+1]||PHRASES[0];
+  $('roundNo').textContent=R.times+1;
+}
+
+/* 每半秒更新畫面 */
+function elapsed(){if(!R)return 0;var now=R.pausedAt||Date.now();return (now-R.start-R.pausedTotal)/1000;}
+function tick(){
+  if(!R)return;
+  updateCadence();
+  var sec=elapsed(),km=R.dist/1000;
+  $('rTime').textContent=fmtTime(sec);
+  $('rDist').textContent=km.toFixed(2);
+  $('rPace').textContent=R.dist>50?fmtPace(sec/km):'--';
+  $('rSteps').textContent=R.steps.toLocaleString();
+  $('pTime').textContent=fmtTime(sec);$('pDist').textContent=km.toFixed(2)+' 公里';
+  var bpm=currentBpm();
+  $('bpmShow').textContent=bpm;
+  $('cadNote').textContent=(store.follow!==false)?(R.cadence>=60?'· 跟著你的腳步':'· 等你走起來…'):'';
+  var secs=Math.round(TOTAL*store.per/bpm*60);
+  $('perRound').textContent=Math.floor(secs/60)+' 分 '+(secs%60)+' 秒';
+  $('roundNo').textContent=R.times+1;
+}
+
+function syncTempoButtons(){
+  $('per1').setAttribute('aria-pressed',String(store.per===1));
+  $('per2').setAttribute('aria-pressed',String(store.per===2));
+  $('followCad').setAttribute('aria-pressed',String(store.follow!==false));
+  $('sound').setAttribute('aria-pressed',String(store.sound!==false));
+}
+$('slower').onclick=function(){store.bpm=Math.max(60,currentBpm()-4);store.follow=false;save();syncTempoButtons();tick();};
+$('faster').onclick=function(){store.bpm=Math.min(200,currentBpm()+4);store.follow=false;save();syncTempoButtons();tick();};
+$('per1').onclick=function(){store.per=1;save();syncTempoButtons();tick();};
+$('per2').onclick=function(){store.per=2;save();syncTempoButtons();tick();};
+$('followCad').onclick=function(){store.follow=(store.follow===false);save();syncTempoButtons();tick();};
+$('sound').onclick=function(){store.sound=(store.sound===false);save();syncTempoButtons();};
+
+/* 開始 */
+$('startBtn').onclick=function(){
+  // iPhone 要在按鈕當下要權限
+  try{if(window.DeviceMotionEvent&&typeof DeviceMotionEvent.requestPermission==='function'){DeviceMotionEvent.requestPermission().then(function(s){if(s==='granted')window.addEventListener('devicemotion',onMotion);}).catch(function(){});}
+  else window.addEventListener('devicemotion',onMotion);}catch(e){}
+  if(store.mode==='follow'){
+    try{var AC=window.AudioContext||window.webkitAudioContext;audio={ctx:new AC(),next:0};audio.ctx.resume();audio.next=audio.ctx.currentTime+0.6;}catch(e){audio=null;}
+  }
+  R=newRun();mot={smooth:9.8,base:9.8,above:false,last:0};
+  var p=person(store.current);$('runTo').textContent=p.name;
+  $('runMode').textContent={follow:'跟著念',self:'自己背',quiet:'安靜走'}[store.mode];
+  $('sutraBox').hidden=(store.mode==='quiet');
+  $('tempoBox').hidden=(store.mode!=='follow');
+  $('followView').hidden=(store.mode!=='follow');
+  $('fullText').hidden=(store.mode!=='self');
+  $('plusBtn').hidden=(store.mode==='quiet');
+  if(store.mode==='self')$('fullText').textContent=SUTRA;
+  if(store.mode==='follow'){R.charIdx=-1;renderLine();}
+  $('pauseBtn').textContent='暫停';$('gpsStatus').textContent='正在找 GPS…';
+  syncTempoButtons();
+  if('geolocation' in navigator)geoId=navigator.geolocation.watchPosition(onPos,onGeoErr,{enableHighAccuracy:true,maximumAge:0,timeout:20000});
+  else onGeoErr({code:2});
+  keepAwake();
+  timerId=setInterval(tick,500);
+  if(audio)schedId=setInterval(scheduler,25);
+  show('run');tick();
+};
+
+$('pauseBtn').onclick=function(){
+  if(!R)return;
+  if(R.pausedAt){R.pausedTotal+=Date.now()-R.pausedAt;R.pausedAt=0;R.lastPos=null;$('pauseBtn').textContent='暫停';if(audio){audio.ctx.resume();audio.next=audio.ctx.currentTime+0.3;}}
+  else{R.pausedAt=Date.now();$('pauseBtn').textContent='繼續';}
+  tick();
+};
+$('plusBtn').onclick=function(){if(!R)return;R.times++;if(store.mode==='follow'){R.charIdx=-1;if(audio)audio.next=audio.ctx.currentTime+0.3;renderLine();}tick();};
+
+/* 口袋模式：全黑、長按 2 秒回來 */
+$('pocketBtn').onclick=function(){$('pocket').hidden=false;};
+(function(){
+  var holdT=null,startT=0,raf=null,pk=$('pocket');
+  function fill(){var p=Math.min(1,(Date.now()-startT)/2000);$('pocketFill').style.width=(p*100)+'%';if(p>=1){pk.hidden=true;end();return;}raf=requestAnimationFrame(fill);}
+  function end(){cancelAnimationFrame(raf);$('pocketFill').style.width='0';}
+  pk.addEventListener('pointerdown',function(e){e.preventDefault();startT=Date.now();raf=requestAnimationFrame(fill);});
+  ['pointerup','pointercancel','pointerleave'].forEach(function(ev){pk.addEventListener(ev,end);});
+  pk.addEventListener('contextmenu',function(e){e.preventDefault();});
+})();
+
+/* 結束 */
+$('endBtn').onclick=function(){
+  if(!R)return;
+  if(R.pausedAt){R.pausedTotal+=Date.now()-R.pausedAt;R.pausedAt=0;}
+  R.secs=elapsed();R.ended=true;
+  clearInterval(timerId);clearInterval(schedId);
+  if(geoId!=null)navigator.geolocation.clearWatch(geoId);
+  window.removeEventListener('devicemotion',onMotion);
+  try{if(wakeLock)wakeLock.release();}catch(e){}
+  try{if(audio)audio.ctx.close();}catch(e){}
+  audio=null;
+  var p=person(store.current);
+  $('eKm').value=(R.dist/1000).toFixed(2);
+  $('eTimes').value=R.times;
+  $('eWish').value=p.wish||'';
+  $('gapNote').hidden=!R.gap;
+  $('editBox').hidden=false;$('cardWrap').hidden=true;
+  show('done');
+};
+$('saveBtn').onclick=function(){
+  var km=Math.max(0,parseFloat($('eKm').value)||0), times=Math.max(0,parseInt($('eTimes').value,10)||0);
+  var p=person(store.current), wish=$('eWish').value.trim()||p.wish;
+  var d=new Date(), date=(d.getMonth()+1)+'/'+d.getDate();
+  p.km=(p.km||0)+km;p.times=(p.times||0)+times;p.wish=wish;
+  store.runs.push({date:date,to:p.name,personId:p.id,km:km,times:times,secs:Math.round(R.secs),steps:R.steps});
+  save();
+  $('cDate').textContent=d.getFullYear()+' 年 '+(d.getMonth()+1)+' 月 '+d.getDate()+' 日';
+  $('cKm').textContent=km.toFixed(1);$('cTimes').textContent=times;$('cMin').textContent=Math.max(1,Math.round(R.secs/60));
+  $('cTo').textContent=p.name;$('cWish').textContent=wish;
+  $('editBox').hidden=true;$('cardWrap').hidden=false;
+};
+$('homeBtn').onclick=function(){R=null;renderHome();show('home');};
+
+if(!('geolocation' in navigator))$('homeStatus').textContent='這個瀏覽器不支援定位，距離需要手動填。';
+renderHome();
+})();
+</script>
+</body>
+</html>
