@@ -162,7 +162,7 @@ label{font-size:12px;color:var(--muted);display:block;margin-bottom:6px}
     <h3>今天想聽什麼</h3>
     <ul>
       <li><b>木魚</b>：跟著你的腳步快慢敲，一聲一個字亮起來，適合會背的人。念完一整部會自動算一遍。</li>
-      <li><b>朗誦</b>：小夢或小醒用自然的速度念，你跟著默念就好，不會背也沒關係。念完一整部會自動算一遍。</li>
+      <li><b>朗誦</b>：小夢念得慢、小醒念得快一點，選順耳的跟著默念就好，不會背也沒關係。念完一整部會自動算一遍。</li>
       <li><b>背景音樂</b>：放伴夢伴醒的音樂，畫面顯示全文，照自己的步調背，念完自己計次。想安靜的話，跑步畫面上可以把音樂關掉。</li>
     </ul>
     <p style="margin-top:6px">選過一次會記住，下次打開直接按開始就好。</p>
@@ -401,8 +401,11 @@ $('addForm').addEventListener('submit',function(e){
 });
 Array.prototype.forEach.call(document.querySelectorAll('#listens button'),function(b){b.onclick=function(){store.listen=b.dataset.listen;save();renderHome();};});
 // 朗誦：選小夢或小醒，點了先試聽一句
+// 小夢念得慢、小醒念得快，名字後面的括號讓人一看就知道
+var VOICE_NAMES=['小夢（慢）','小醒（快）'], VOICE_RATES=[0.8,1.1];
+function voiceRate(){var vs=zhVoices().slice(0,2);for(var i=0;i<vs.length;i++)if(vs[i].voiceURI===store.voice)return VOICE_RATES[i];return VOICE_RATES[0];}
 function renderVoicePick(){
-  var box=$('voiceChips'),vs=zhVoices().slice(0,2),names=['小夢','小醒'];
+  var box=$('voiceChips'),vs=zhVoices().slice(0,2),names=VOICE_NAMES;
   $('voicePick').hidden=(store.listen!=='voice'||!vs.length);
   $('listenNote').textContent=(store.listen==='voice'&&!vs.length)?'這支手機找不到中文朗誦聲音，請改選其他選項。':'';
   box.textContent='';
@@ -414,7 +417,7 @@ function renderVoicePick(){
     c.setAttribute('aria-pressed',String(v.voiceURI===store.voicePick));
     c.onclick=function(){
       store.voicePick=v.voiceURI;save();renderVoicePick();
-      try{TTS.cancel();var u=new SpeechSynthesisUtterance(spoken('觀自在菩薩'));u.voice=v;u.lang=v.lang;u.rate=0.9;TTS.speak(u);}catch(e){}
+      try{TTS.cancel();var u=new SpeechSynthesisUtterance(spoken('觀自在菩薩'));u.voice=v;u.lang=v.lang;u.rate=VOICE_RATES[i];TTS.speak(u);}catch(e){}
     };
     box.appendChild(c);
   });
@@ -431,7 +434,7 @@ function applyListen(){
   save();
 }
 function listenLabel(){
-  if(store.listen==='voice'){var vs=zhVoices().slice(0,2);for(var i=0;i<vs.length;i++)if(vs[i].voiceURI===store.voice)return '朗誦 · '+['小夢','小醒'][i];return '朗誦';}
+  if(store.listen==='voice'){var vs=zhVoices().slice(0,2);for(var i=0;i<vs.length;i++)if(vs[i].voiceURI===store.voice)return '朗誦 · '+VOICE_NAMES[i];return '朗誦';}
   return {fish:'木魚',music:'背景音樂'}[store.listen]||'';
 }
 // 距離：預設交給 Strava／手錶（可以鎖屏），或跑伴自己用 GPS 記（螢幕要亮著）
@@ -597,7 +600,7 @@ function fillVoices(){
   var sel=$('voiceSel'),vs=zhVoices();
   while(sel.options.length>2)sel.remove(2);
   // 只留兩個聲音，取名小夢、小醒（優先用台灣的聲音）
-  var names=['小夢','小醒'];
+  var names=VOICE_NAMES;
   vs.slice(0,2).forEach(function(v,i){
     var o=document.createElement('option');o.value=v.voiceURI;
     o.textContent='朗誦 · '+names[i];
@@ -618,7 +621,7 @@ function speakPhrase(pi){
   var phrase=PHRASES[pi], start=PH_START[pi];
   R.charIdx=start-1;renderLine();
   // 朗誦用固定的自然速度，不跟步頻
-  var rate=0.9, gapMs=350;
+  var rate=voiceRate(), gapMs=350;
   var u=new SpeechSynthesisUtterance(spoken(phrase));
   u.voice=v;u.lang=v.lang;u.rate=rate;
   // sp.k = 這個聲音在速度 1 時，念一個字實際花幾毫秒；每念完一句就重新校正
