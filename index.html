@@ -46,7 +46,7 @@ button:focus-visible,input:focus-visible{outline:2px solid var(--gold);outline-o
 .btn{min-height:52px;border-radius:26px;border:none;background:var(--gold);color:var(--ink);font-size:16px;font-weight:700;padding:0 20px}
 .btn.ghost{background:transparent;border:1.5px solid var(--line);color:var(--text);font-weight:400}
 .round{width:52px;height:52px;border-radius:50%;border:1.5px solid var(--line);background:transparent;color:var(--text);font-size:22px;flex-shrink:0}
-input[type=text],input[type=number]{width:100%;min-height:46px;border-radius:12px;border:1.5px solid var(--line);background:var(--deep);color:var(--text);font-family:inherit;font-size:16px;padding:0 12px}
+input[type=text],input[type=number],select{width:100%;min-height:46px;border-radius:12px;border:1.5px solid var(--line);background:var(--deep);color:var(--text);font-family:inherit;font-size:16px;padding:0 12px}
 label{font-size:12px;color:var(--muted);display:block;margin-bottom:6px}
 .list{display:flex;flex-direction:column;gap:8px}
 .item{display:flex;justify-content:space-between;gap:10px;font-size:13px;padding:10px 0;border-top:1px solid var(--line)}
@@ -172,7 +172,10 @@ label{font-size:12px;color:var(--muted);display:block;margin-bottom:6px}
       <button class="chip" id="per1" aria-pressed="true">一步一字</button>
       <button class="chip" id="per2" aria-pressed="false">兩步一字</button>
       <button class="chip" id="followCad" aria-pressed="true">跟隨步頻</button>
-      <button class="chip" id="sound" aria-pressed="true">木魚聲</button>
+    </div>
+    <div style="margin-top:12px">
+      <label for="voiceSel">陪念聲音</label>
+      <select id="voiceSel"><option value="fish">木魚聲</option><option value="mute">只看字，不出聲</option></select>
     </div>
     <div class="small muted" style="margin-top:10px">這個節奏約 <span id="perRound">-</span> 念完一遍</div>
   </div>
@@ -369,11 +372,11 @@ function knock(t){
 function currentBpm(){return (store.follow!==false&&R&&R.cadence>=60)?R.cadence:store.bpm;}
 function interval(){return 60/currentBpm()*store.per;}
 function scheduler(){
-  if(!R||R.pausedAt||store.mode!=='follow')return;
+  if(!R||R.pausedAt||store.mode!=='follow'||isVoice())return;
   var ctx=audio.ctx;
   if(audio.next<ctx.currentTime-0.5)audio.next=ctx.currentTime+0.1;
   while(audio.next<ctx.currentTime+0.12){
-    if(store.sound!==false)knock(audio.next);
+    if(store.voice!=='mute')knock(audio.next);
     var delay=Math.max(0,(audio.next-ctx.currentTime)*1000);
     setTimeout(advanceChar,delay);
     audio.next+=interval();
@@ -392,6 +395,69 @@ function renderLine(){
   $('nextLine').textContent=PHRASES[c.pi+1]||PHRASES[0];
   $('roundNo').textContent=R.times+1;
 }
+
+/* ---------- 手機朗誦（用手機內建語音） ---------- */
+var PH_START=[];(function(){var n=0;PHRASES.forEach(function(p){PH_START.push(n);n+=p.length;});})();
+// 念給機器聽的版本：修正經文特殊讀音（畫面上顯示的還是原文）
+var FIX=[[/般若/g,'波惹'],[/揭諦/g,'接地'],[/舍利子/g,'設利子']];
+function spoken(t){FIX.forEach(function(f){t=t.replace(f[0],f[1]);});return t;}
+var TTS=('speechSynthesis' in window)?window.speechSynthesis:null;
+var sp={timer:null,guard:null,token:0};
+function zhVoices(){
+  if(!TTS)return[];
+  return TTS.getVoices().filter(function(v){return /^(zh|cmn)/i.test(v.lang);})
+    .sort(function(a,b){var ta=/TW|Hant/i.test(a.lang)?0:1,tb=/TW|Hant/i.test(b.lang)?0:1;return ta-tb;});
+}
+function isVoice(){return !!store.voice&&store.voice!=='fish'&&store.voice!=='mute';}
+function voiceObj(){var vs=zhVoices();for(var i=0;i<vs.length;i++)if(vs[i].voiceURI===store.voice)return vs[i];return null;}
+function fillVoices(){
+  var sel=$('voiceSel'),vs=zhVoices();
+  while(sel.options.length>2)sel.remove(2);
+  vs.forEach(function(v){
+    var o=document.createElement('option');o.value=v.voiceURI;
+    var where=/TW/i.test(v.lang)?'台灣':/HK/i.test(v.lang)?'香港':'中國';
+    o.textContent='朗誦 · '+v.name.replace(/\s*\(.*\)\s*/,'')+'（'+where+'）';
+    sel.appendChild(o);
+  });
+  if(isVoice()&&!voiceObj())store.voice='fish';
+  sel.value=store.voice||'fish';
+}
+if(TTS){fillVoices();try{TTS.addEventListener('voiceschanged',fillVoices);}catch(e){TTS.onvoiceschanged=fillVoices;}}
+
+function stopSpeech(){sp.token++;clearInterval(sp.timer);clearTimeout(sp.guard);try{if(TTS)TTS.cancel();}catch(e){}}
+function speakPhrase(pi){
+  if(!R||R.ended||R.pausedAt||!isVoice()||!TTS)return;
+  var v=voiceObj();if(!v)return;
+  var my=++sp.token;clearInterval(sp.timer);clearTimeout(sp.guard);
+  var phrase=PHRASES[pi], start=PH_START[pi];
+  R.charIdx=start-1;renderLine();
+  var secPerChar=60/currentBpm()*store.per;
+  var rate=Math.min(2,Math.max(0.5,(1/secPerChar)/4));
+  var u=new SpeechSynthesisUtterance(spoken(phrase));
+  u.voice=v;u.lang=v.lang;u.rate=rate;
+  var stepMs=1000/(4*rate), done=false;
+  function next(){
+    if(done||my!==sp.token)return;done=true;
+    clearInterval(sp.timer);clearTimeout(sp.guard);
+    var np=pi+1;if(np>=PHRASES.length){np=0;R.times++;}
+    setTimeout(function(){if(my===sp.token)speakPhrase(np);},secPerChar*500);
+  }
+  u.onstart=function(){
+    if(my!==sp.token)return;
+    sp.timer=setInterval(function(){if(R&&R.charIdx<start+phrase.length-1){R.charIdx++;renderLine();}},stepMs);
+  };
+  u.onend=next;u.onerror=next;
+  sp.guard=setTimeout(next,phrase.length*stepMs*3+3000);
+  TTS.speak(u);
+}
+function currentPhrase(){return R&&R.charIdx>=0?CHARS[Math.min(R.charIdx,TOTAL-1)].pi:0;}
+$('voiceSel').onchange=function(){
+  store.voice=this.value;save();
+  if(!R||R.ended)return;
+  stopSpeech();
+  if(isVoice()){unlockIOSAudio();speakPhrase(currentPhrase());}
+  else if(audio){audio.next=audio.ctx.currentTime+0.2;}
+};
 
 /* 每半秒更新畫面 */
 function elapsed(){if(!R)return 0;var now=R.pausedAt||Date.now();return (now-R.start-R.pausedTotal)/1000;}
@@ -416,14 +482,12 @@ function syncTempoButtons(){
   $('per1').setAttribute('aria-pressed',String(store.per===1));
   $('per2').setAttribute('aria-pressed',String(store.per===2));
   $('followCad').setAttribute('aria-pressed',String(store.follow!==false));
-  $('sound').setAttribute('aria-pressed',String(store.sound!==false));
 }
 $('slower').onclick=function(){store.bpm=Math.max(60,currentBpm()-4);store.follow=false;save();syncTempoButtons();tick();};
 $('faster').onclick=function(){store.bpm=Math.min(200,currentBpm()+4);store.follow=false;save();syncTempoButtons();tick();};
 $('per1').onclick=function(){store.per=1;save();syncTempoButtons();tick();};
 $('per2').onclick=function(){store.per=2;save();syncTempoButtons();tick();};
 $('followCad').onclick=function(){store.follow=(store.follow===false);save();syncTempoButtons();tick();};
-$('sound').onclick=function(){store.sound=(store.sound===false);save();syncTempoButtons();};
 
 /* 開始 */
 $('startBtn').onclick=function(){
@@ -451,16 +515,17 @@ $('startBtn').onclick=function(){
   keepAwake();
   timerId=setInterval(tick,500);
   if(audio)schedId=setInterval(scheduler,25);
+  if(store.mode==='follow'){fillVoices();if(isVoice())speakPhrase(0);}
   show('run');tick();
 };
 
 $('pauseBtn').onclick=function(){
   if(!R)return;
-  if(R.pausedAt){R.pausedTotal+=Date.now()-R.pausedAt;R.pausedAt=0;R.lastPos=null;$('pauseBtn').textContent='暫停';if(audio){audio.ctx.resume();audio.next=audio.ctx.currentTime+0.3;}}
-  else{R.pausedAt=Date.now();$('pauseBtn').textContent='繼續';}
+  if(R.pausedAt){R.pausedTotal+=Date.now()-R.pausedAt;R.pausedAt=0;R.lastPos=null;$('pauseBtn').textContent='暫停';if(audio){audio.ctx.resume();audio.next=audio.ctx.currentTime+0.3;}if(store.mode==='follow'&&isVoice())speakPhrase(currentPhrase());}
+  else{R.pausedAt=Date.now();$('pauseBtn').textContent='繼續';stopSpeech();}
   tick();
 };
-$('plusBtn').onclick=function(){if(!R)return;R.times++;if(store.mode==='follow'){R.charIdx=-1;if(audio)audio.next=audio.ctx.currentTime+0.3;renderLine();}tick();};
+$('plusBtn').onclick=function(){if(!R)return;R.times++;if(store.mode==='follow'){R.charIdx=-1;if(audio)audio.next=audio.ctx.currentTime+0.3;renderLine();if(isVoice()){stopSpeech();speakPhrase(0);}}tick();};
 
 /* 口袋模式：全黑、長按 2 秒回來 */
 $('pocketBtn').onclick=function(){$('pocket').hidden=false;};
@@ -484,6 +549,7 @@ $('endBtn').onclick=function(){
   try{if(wakeLock)wakeLock.release();}catch(e){}
   try{if(audio)audio.ctx.close();}catch(e){}
   try{if(silentEl)silentEl.pause();}catch(e){}
+  stopSpeech();
   audio=null;
   var p=person(store.current);
   $('eKm').value=(R.dist/1000).toFixed(2);
