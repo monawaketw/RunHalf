@@ -108,6 +108,11 @@ label{font-size:12px;color:var(--muted);display:block;margin-bottom:6px}
 .card .nums b{display:block;font-size:26px;color:var(--gold);font-variant-numeric:tabular-nums}
 .card .nums span{font-size:11px;color:var(--muted)}
 .card .to{font-family:var(--serif);font-size:18px;line-height:1.8;margin-top:16px}
+.together{text-align:center;padding:12px 16px}
+.together .tg{font-size:14px;margin-top:4px;color:#e8e2cc}
+.together b{color:var(--gold);font-size:18px;font-variant-numeric:tabular-nums}
+.optin{display:flex;gap:10px;align-items:center;font-size:14px;color:var(--text);margin-top:10px;min-height:44px}
+.optin input{width:22px;height:22px;accent-color:#c8a84b}
 .guide summary{font-size:15px;font-weight:500;cursor:pointer;min-height:28px;color:var(--gold)}
 .guide h3{font-size:14px;color:var(--gold);margin:18px 0 6px;font-weight:500}
 .guide p,.guide li{font-size:14px;line-height:1.8;color:#e8e2cc;margin:0}
@@ -130,6 +135,11 @@ label{font-size:12px;color:var(--muted);display:block;margin-bottom:6px}
     <button class="panel stat tap" id="openRecords"><div class="k">累積距離 ›</div><div class="v" id="totKm">0<span> 公里</span></div></button>
     <button class="panel stat tap" id="openDedi"><div class="k">心經 ›</div><div class="v" id="totTimes">0<span> 遍</span></div></button>
     <button class="panel stat tap" id="openCal"><div class="k">連續天數 ›</div><div class="v" id="streak">0<span> 天</span></div></button>
+  </div>
+
+  <div class="panel together" id="together" hidden>
+    <div class="small muted">大家一起</div>
+    <div class="tg"><b id="tgTimes">0</b> 遍心經 · <b id="tgKm">0</b> 公里 · <b id="tgUsers">0</b> 位跑伴</div>
   </div>
 
   <div>
@@ -209,6 +219,9 @@ label{font-size:12px;color:var(--muted);display:block;margin-bottom:6px}
       <li>跑伴結束時會寫「這次從幾點到幾點」，健康 app 裡的長條圖也是按時間排的，可以對照。</li>
       <li>不想算的話，也可以選「跑伴自己記」，讓跑伴用 GPS 記距離，手機要開著，可以用口袋模式。</li>
     </ul>
+    <h3>大家一起的累積</h3>
+    <p>首頁會顯示所有跑伴一起念了幾遍心經。你的遍數和公里數會用一組隨機編號匿名加進去，<b>不會送出名字、迴向對象、位置或任何個人資料</b>。不想加入的話，可以把下面的開關關掉。</p>
+    <label class="optin"><input type="checkbox" id="shareStats"> 匿名把我的遍數加進大家的累積</label>
     <h3>聽不到聲音？</h3>
     <ul>
       <li>把手機音量調大，媒體音量也要開。</li>
@@ -1082,7 +1095,7 @@ $('delBtn').onclick=function(){
   if(!b.dataset.armed){b.dataset.armed='1';b.textContent='確定刪除？再按一次';return;}
   var r=R&&R.editId?runById(R.editId):null;
   if(r){var p=findPerson(r.personId)||{};p.km=Math.max(0,(p.km||0)-r.km);p.times=Math.max(0,(p.times||0)-r.times);
-    store.runs=store.runs.filter(function(x){return x.id!==r.id;});save();}
+    store.runs=store.runs.filter(function(x){return x.id!==r.id;});save();report(-r.times,-r.km,'del');}
   R=null;renderHome();show('home');
 };
 
@@ -1111,6 +1124,7 @@ $('saveBtn').onclick=function(){
   else store.runs.push(rec);
   if(R.manual&&!old)store.runs.sort(function(a,b){return isoOf(a)<isoOf(b)?-1:isoOf(a)>isoOf(b)?1:0;});
   save();
+  if(old)report(times-old.times,km-old.km,'edit');else report(times,km,'new');
   $('delBtn').hidden=true;$('cancelBtn').hidden=true;
   $('cDate').textContent=d.getFullYear()+' 年 '+(d.getMonth()+1)+' 月 '+d.getDate()+' 日';
   $('cKm').textContent=km.toFixed(1);$('cTimes').textContent=times;$('cMin').textContent=Math.max(1,Math.round(R.secs/60));
@@ -1211,7 +1225,52 @@ $('shareStory').onclick=function(){doShare('story');};
 $('sharePost').onclick=function(){doShare('post');};
 $('shareClose').onclick=function(){$('shareView').hidden=true;};
 
-$('homeBtn').onclick=function(){R=null;renderHome();show('home');};
+/* ---------- 大家一起的累積（匿名） ---------- */
+// 把 Google Apps Script 部署後的網址貼在這裡；空白就表示還沒開
+var STATS_URL='';
+if(!store.uid){store.uid=(window.crypto&&crypto.randomUUID)?crypto.randomUUID():('u'+Date.now().toString(36)+Math.random().toString(36).slice(2));save();}
+function statsOn(){return !!STATS_URL&&store.shareStats!==false;}
+function report(dt,dk,type){
+  if(!statsOn()||(!dt&&!dk))return;
+  if(!store.outbox)store.outbox=[];
+  store.outbox.push({uid:store.uid,times:dt,km:Math.round(dk*100)/100,type:type});
+  save();flushOutbox();
+}
+// 沒網路時先存著，下次有網路再送
+var flushing=false;
+function flushOutbox(){
+  if(!statsOn()||flushing||!store.outbox||!store.outbox.length)return;
+  flushing=true;
+  var item=store.outbox[0];
+  fetch(STATS_URL,{method:'POST',mode:'no-cors',headers:{'Content-Type':'text/plain'},body:JSON.stringify(item)})
+    .then(function(){store.outbox.shift();save();flushing=false;flushOutbox();})
+    .catch(function(){flushing=false;});
+}
+// 第一次加入時，把以前的紀錄一次算進去
+function reportHistory(){
+  if(!statsOn()||store.reportedInit)return;
+  var t=0,k=0;store.runs.forEach(function(r){t+=r.times;k+=r.km;});
+  store.reportedInit=true;save();
+  if(t||k)report(t,k,'init');
+}
+function loadTogether(){
+  if(!STATS_URL)return;
+  fetch(STATS_URL).then(function(r){return r.json();}).then(function(d){
+    if(!d||typeof d.times!=='number')return;
+    $('tgTimes').textContent=d.times.toLocaleString();
+    $('tgKm').textContent=(Math.round(d.km*10)/10).toLocaleString();
+    $('tgUsers').textContent=d.users.toLocaleString();
+    $('together').hidden=false;
+  }).catch(function(){});
+}
+$('shareStats').checked=store.shareStats!==false;
+$('shareStats').onchange=function(){
+  store.shareStats=this.checked;save();
+  if(this.checked){reportHistory();flushOutbox();}
+};
+reportHistory();flushOutbox();loadTogether();
+
+$('homeBtn').onclick=function(){R=null;renderHome();show('home');setTimeout(loadTogether,3000);};
 
 if(!('geolocation' in navigator))$('homeStatus').textContent='這個瀏覽器不支援定位，距離需要手動填。';
 renderHome();
