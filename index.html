@@ -49,7 +49,7 @@ button:focus-visible,input:focus-visible{outline:2px solid var(--gold);outline-o
 input[type=text],input[type=number],select{width:100%;min-height:46px;border-radius:12px;border:1.5px solid var(--line);background:var(--deep);color:var(--text);font-family:inherit;font-size:16px;padding:0 12px}
 label{font-size:12px;color:var(--muted);display:block;margin-bottom:6px}
 .list{display:flex;flex-direction:column;gap:8px}
-.item{display:flex;justify-content:space-between;gap:10px;font-size:13px;padding:10px 0;border-top:1px solid var(--line)}
+.item{display:flex;justify-content:space-between;gap:10px;font-size:13px;padding:10px 0;border:none;border-top:1px solid var(--line);background:none;color:var(--text);width:100%;text-align:left;min-height:44px;align-items:center;font-family:inherit}
 .item:first-child{border-top:none}
 .num{font-variant-numeric:tabular-nums}
 
@@ -122,8 +122,7 @@ label{font-size:12px;color:var(--muted);display:block;margin-bottom:6px}
     <h2 style="margin-bottom:10px">今天想怎麼跑</h2>
     <div class="seg" id="modes">
       <button data-mode="follow" aria-pressed="true">跟著念<small>木魚隨步頻</small></button>
-      <button data-mode="self" aria-pressed="false">自己背<small>念完按一下</small></button>
-      <button data-mode="quiet" aria-pressed="false">安靜走<small>只記錄</small></button>
+      <button data-mode="self" aria-pressed="false">自己背<small>背景音樂 · 全文</small></button>
     </div>
   </div>
 
@@ -153,11 +152,10 @@ label{font-size:12px;color:var(--muted);display:block;margin-bottom:6px}
       <li>在「今天迴向給」按「＋ 新增」，加上想祝福的人。</li>
       <li>第一次按開始，手機問「動作」或「定位」權限，都按允許。</li>
     </ol>
-    <h3>三種跑法</h3>
+    <h3>兩種跑法</h3>
     <ul>
       <li><b>跟著念</b>：選木魚聲，木魚會跟著你的腳步快慢敲，一字一聲，適合會背的人。選小夢或小醒，會用自然速度朗誦，跟著默念就好。念完一整部會自動算一遍。</li>
-      <li><b>自己背</b>：畫面顯示全文，念完一遍自己計次。</li>
-      <li><b>安靜走</b>：不念經，只記錄這段路。</li>
+      <li><b>自己背</b>：播放伴夢伴醒的背景音樂，畫面顯示全文，按自己的步調背，念完一遍自己計次。</li>
     </ul>
     <h3>搭配 Strava 一起用</h3>
     <ol>
@@ -214,6 +212,10 @@ label{font-size:12px;color:var(--muted);display:block;margin-bottom:6px}
     <div id="followView">
       <div class="line" id="line"></div>
       <div class="next" id="nextLine"></div>
+    </div>
+    <div class="row" id="bgmRow" hidden style="justify-content:center;margin-bottom:12px;flex-wrap:wrap">
+      <button class="chip" id="bgmBtn" aria-pressed="true">背景音樂</button>
+      <span class="small muted" id="bgmNote"></span>
     </div>
     <div class="full" id="fullText" hidden></div>
   </div>
@@ -278,7 +280,7 @@ label{font-size:12px;color:var(--muted);display:block;margin-bottom:6px}
       <div><label for="ePerson">迴向給</label><select id="ePerson"></select></div>
       <div class="row">
         <div style="flex:1;min-width:0"><label for="eDate">日期</label><input type="date" id="eDate" style="width:100%;min-height:46px;border-radius:12px;border:1.5px solid var(--line);background:var(--deep);color:var(--text);font-family:inherit;font-size:16px;padding:0 10px"></div>
-        <div style="flex:1;min-width:0"><label for="eMin">時間（分鐘）</label><input type="number" id="eMin" step="1" min="0" inputmode="numeric"></div>
+        <div style="flex:1;min-width:0"><label for="eDur">時間（照 Strava 打）</label><input type="text" id="eDur" placeholder="例如 32:15" autocomplete="off"></div>
       </div>
     </div>
     <div class="row">
@@ -286,7 +288,10 @@ label{font-size:12px;color:var(--muted);display:block;margin-bottom:6px}
       <div style="flex:1"><label for="eTimes">心經遍數</label><input type="number" id="eTimes" step="1" min="0" inputmode="numeric"></div>
     </div>
     <div><label for="eWish">迴向的話</label><input type="text" id="eWish" maxlength="24"></div>
+    <div class="small warn" id="durErr" hidden>時間看不懂，請打成 32:15 或 1:05:20 這樣的格式。</div>
     <button class="btn" id="saveBtn">存下來，做成迴向卡</button>
+    <button class="btn ghost" id="delBtn" hidden>刪除這筆紀錄</button>
+    <button class="btn ghost" id="cancelBtn" hidden>取消，回首頁</button>
   </div>
 
   <div id="cardWrap" hidden style="display:flex;flex-direction:column;gap:12px">
@@ -326,6 +331,7 @@ var TOTAL=CHARS.length;
 var KEY='paoban-v1';
 var store={people:[{id:'all',name:'一切眾生',wish:'願大家都好好的',km:0,times:0}],runs:[],current:'all',mode:'follow',bpm:120,per:1};
 try{var raw=localStorage.getItem(KEY);if(raw){var s=JSON.parse(raw);for(var k in s)store[k]=s[k];}}catch(e){}
+if(store.mode==='quiet')store.mode='follow'; // 「安靜走」已拿掉
 function save(){try{localStorage.setItem(KEY,JSON.stringify(store));}catch(e){}}
 function person(id){for(var i=0;i<store.people.length;i++)if(store.people[i].id===id)return store.people[i];return store.people[0];}
 
@@ -352,15 +358,24 @@ function renderHome(){
   Array.prototype.forEach.call(document.querySelectorAll('#modes button'),function(b){b.setAttribute('aria-pressed',String(b.dataset.mode===store.mode));});
   Array.prototype.forEach.call(document.querySelectorAll('#dists button'),function(b){b.setAttribute('aria-pressed',String(b.dataset.dist===(distSelf()?'self':'other')));});
   var rec=$('recent');rec.textContent='';
-  var last=store.runs.slice(-5).reverse();
+  var all=store.runs.slice().reverse(), last=showAllRuns?all:all.slice(0,5);
   if(!last.length){var e=document.createElement('div');e.className='small muted';e.textContent='還沒有紀錄。第一次跑完，這裡會出現你的第一筆。';rec.appendChild(e);}
   last.forEach(function(r){
-    var it=document.createElement('div');it.className='item';
+    // 點一筆紀錄就能修改或刪除
+    var it=document.createElement('button');it.type='button';it.className='item';
     var a=document.createElement('span');a.textContent=r.date+' · 給 '+r.to;
-    var b=document.createElement('span');b.className='num muted';b.textContent=r.km.toFixed(2)+' km · '+r.times+' 遍';
-    it.appendChild(a);it.appendChild(b);rec.appendChild(it);
+    var b=document.createElement('span');b.className='num muted';b.textContent=r.km.toFixed(2)+' km · '+r.times+' 遍'+(r.secs?' · '+fmtTime(r.secs):'')+' ›';
+    it.appendChild(a);it.appendChild(b);it.onclick=function(){openEditor(r);};rec.appendChild(it);
   });
+  if(all.length>5){
+    var more=document.createElement('button');more.type='button';more.className='small';
+    more.style.cssText='background:none;border:none;color:var(--gold);min-height:44px;align-self:flex-start;padding:0';
+    more.textContent=showAllRuns?'收起':'看全部 '+all.length+' 筆';
+    more.onclick=function(){showAllRuns=!showAllRuns;renderHome();};
+    rec.appendChild(more);
+  }
 }
+var showAllRuns=false;
 $('addToggle').onclick=function(){$('addForm').hidden=!$('addForm').hidden;if(!$('addForm').hidden)$('newName').focus();};
 $('addForm').addEventListener('submit',function(e){
   e.preventDefault();var n=$('newName').value.trim();if(!n)return;
@@ -432,6 +447,25 @@ function unlockIOSAudio(){
   try{if(navigator.audioSession)navigator.audioSession.type='playback';}catch(e){}
   try{if(!silentEl){silentEl=new Audio(silentWav());silentEl.loop=true;silentEl.setAttribute('playsinline','');}var p=silentEl.play();if(p&&p.catch)p.catch(function(){});}catch(e){}
 }
+
+/* 自己背：背景音樂。把音樂檔命名為 bgm.mp3，放在跟 index.html 同一個地方就會播 */
+var bgmEl=null,bgmOk=false;
+function bgmOn(){return store.bgm!==false;}
+function startBgm(){
+  if(!bgmEl){
+    bgmEl=new Audio('bgm.mp3');bgmEl.loop=true;bgmEl.setAttribute('playsinline','');bgmEl.volume=0.8;
+    bgmEl.addEventListener('canplay',function(){bgmOk=true;$('bgmNote').textContent='';});
+    bgmEl.addEventListener('error',function(){bgmOk=false;$('bgmNote').textContent='還沒放音樂檔';});
+  }
+  if(!bgmOn())return;
+  try{var p=bgmEl.play();if(p&&p.catch)p.catch(function(){});}catch(e){}
+}
+function stopBgm(){try{if(bgmEl)bgmEl.pause();}catch(e){}}
+$('bgmBtn').onclick=function(){
+  store.bgm=!bgmOn();save();
+  this.setAttribute('aria-pressed',String(bgmOn()));
+  if(bgmOn()&&R&&!R.ended&&!R.pausedAt)startBgm();else stopBgm();
+};
 
 /* 木魚聲 */
 function knock(t){
@@ -626,6 +660,8 @@ $('startBtn').onclick=function(){
   $('fullText').hidden=(store.mode!=='self');
   $('plusBtn').hidden=(store.mode==='quiet');
   if(store.mode==='self')$('fullText').textContent=SUTRA;
+  $('bgmRow').hidden=(store.mode!=='self');
+  if(store.mode==='self'){$('bgmBtn').setAttribute('aria-pressed',String(bgmOn()));startBgm();}
   if(store.mode==='follow'){R.charIdx=-1;renderLine();}
   $('pauseBtn').textContent='暫停';$('gpsStatus').textContent='正在找 GPS…';
   syncTempoButtons();
@@ -691,7 +727,7 @@ function setupMediaKeys(on){
   function hit(d){
     var n=Date.now();if(n-last<900)return;last=n;
     addCount(d);
-    try{if(silentEl)silentEl.play();ms.playbackState='playing';}catch(e){}
+    try{if(silentEl)silentEl.play();if(store.mode==='self'&&bgmOn()&&bgmEl)bgmEl.play();ms.playbackState='playing';}catch(e){}
   }
   [['play',1],['pause',1],['nexttrack',1],['previoustrack',-1]].forEach(function(a){
     try{ms.setActionHandler(a[0],on?function(){hit(a[1]);}:null);}catch(e){}
@@ -700,8 +736,8 @@ function setupMediaKeys(on){
 
 $('pauseBtn').onclick=function(){
   if(!R)return;
-  if(R.pausedAt){R.pausedTotal+=Date.now()-R.pausedAt;R.pausedAt=0;R.lastPos=null;$('pauseBtn').textContent='暫停';if(audio){audio.ctx.resume();audio.next=audio.ctx.currentTime+0.3;}if(store.mode==='follow'&&isVoice())speakPhrase(currentPhrase());}
-  else{R.pausedAt=Date.now();$('pauseBtn').textContent='繼續';stopSpeech();cancelFuture();}
+  if(R.pausedAt){R.pausedTotal+=Date.now()-R.pausedAt;R.pausedAt=0;R.lastPos=null;$('pauseBtn').textContent='暫停';if(audio){audio.ctx.resume();audio.next=audio.ctx.currentTime+0.3;}if(store.mode==='follow'&&isVoice())speakPhrase(currentPhrase());if(store.mode==='self')startBgm();}
+  else{R.pausedAt=Date.now();$('pauseBtn').textContent='繼續';stopSpeech();cancelFuture();stopBgm();}
   tick();
 };
 $('plusBtn').onclick=function(){addCount(1);};
@@ -735,6 +771,7 @@ $('endBtn').onclick=function(){
   try{if(wakeLock)wakeLock.release();}catch(e){}
   try{if(audio)audio.ctx.close();}catch(e){}
   try{if(silentEl)silentEl.pause();}catch(e){}
+  stopBgm();
   stopSpeech();
   setupMediaKeys(false);
   audio=null;
@@ -746,6 +783,7 @@ $('endBtn').onclick=function(){
   $('eWish').value=p.wish||'';
   $('gapNote').hidden=!(distSelf()&&R.gap);
   $('manualFields').hidden=true;
+  $('delBtn').hidden=true;$('cancelBtn').hidden=true;$('durErr').hidden=true;
   $('doneSub').textContent='今天的跑伴完成了';$('doneTitle').textContent='辛苦了，也謝謝你。';
   $('editBox').hidden=false;$('cardWrap').hidden=true;
   show('done');
@@ -753,20 +791,57 @@ $('endBtn').onclick=function(){
 
 /* 補記一筆：用其他 app 跑完的，或沒開跑伴的那次 */
 function todayISO(){var d=new Date();return d.getFullYear()+'-'+('0'+(d.getMonth()+1)).slice(-2)+'-'+('0'+d.getDate()).slice(-2);}
-$('manualBtn').onclick=function(){
-  R={manual:true,ended:true,secs:0,steps:0,times:0,dist:0};
+// 時間照 Strava 的寫法打：32:15、1:05:20、32分15秒、或只打分鐘 32
+function parseDur(s){
+  s=String(s||'').trim().replace(/：/g,':').replace(/小時|時/g,':').replace(/分/g,':').replace(/秒/g,'').replace(/:$/,'');
+  if(!s)return 0;
+  if(!/^\d+(:\d+){0,2}$/.test(s))return null;
+  var p=s.split(':').map(Number);
+  if(p.length===1)return p[0]*60;
+  if(p.length===2)return p[0]*60+p[1];
+  return p[0]*3600+p[1]*60+p[2];
+}
+function fmtDur(sec){return sec?fmtTime(sec):'';}
+function isoOf(r){
+  if(r.iso)return r.iso;
+  var m=/^(\d+)\/(\d+)$/.exec(r.date||'');var y=new Date().getFullYear();
+  return m?y+'-'+('0'+m[1]).slice(-2)+'-'+('0'+m[2]).slice(-2):todayISO();
+}
+// 舊紀錄補上編號，才能修改或刪除
+store.runs.forEach(function(r,i){if(!r.id)r.id='r'+i+'_'+Date.now();if(!r.iso)r.iso=isoOf(r);});
+function runById(id){for(var i=0;i<store.runs.length;i++)if(store.runs[i].id===id)return store.runs[i];return null;}
+
+function openEditor(run){
+  R={manual:true,ended:true,secs:0,steps:run?run.steps||0:0,times:0,dist:0,editId:run?run.id:null};
   var sel=$('ePerson');sel.textContent='';
   store.people.forEach(function(p){var o=document.createElement('option');o.value=p.id;o.textContent=p.name;sel.appendChild(o);});
-  sel.value=store.current;
-  $('eDate').value=todayISO();$('eDate').max=todayISO();
-  $('eMin').value='';$('eKm').value='';$('eKm').placeholder='例如 3.11';$('eKmLabel').textContent='公里';
-  $('eTimes').value='';$('eWish').value=person(store.current).wish||'';
-  $('gapNote').hidden=true;$('manualFields').hidden=false;
-  $('doneSub').textContent='補記一筆';$('doneTitle').textContent='跑過的路，也算數。';
+  sel.value=run?run.personId:store.current;
+  $('eDate').value=run?isoOf(run):todayISO();$('eDate').max=todayISO();
+  $('eDur').value=run?fmtDur(run.secs):'';
+  $('eKm').value=run?String(run.km):'';$('eKm').placeholder='例如 3.11';$('eKmLabel').textContent='公里';
+  $('eTimes').value=run?String(run.times):'';
+  $('eWish').value=(run&&run.wish)||person(sel.value).wish||'';
+  $('gapNote').hidden=true;$('durErr').hidden=true;$('manualFields').hidden=false;
+  $('delBtn').hidden=!run;$('delBtn').textContent='刪除這筆紀錄';$('delBtn').dataset.armed='';
+  $('cancelBtn').hidden=false;
+  $('doneSub').textContent=run?'修改紀錄':'補記一筆';
+  $('doneTitle').textContent=run?'看看哪裡要改。':'跑過的路，也算數。';
   $('editBox').hidden=false;$('cardWrap').hidden=true;
   show('done');
-};
+}
+$('manualBtn').onclick=function(){openEditor(null);};
 $('ePerson').onchange=function(){$('eWish').value=person(this.value).wish||'';};
+$('cancelBtn').onclick=function(){R=null;renderHome();show('home');};
+
+// 刪除：按第一次變成「確定刪除？」，再按一次才刪
+$('delBtn').onclick=function(){
+  var b=this;
+  if(!b.dataset.armed){b.dataset.armed='1';b.textContent='確定刪除？再按一次';return;}
+  var r=R&&R.editId?runById(R.editId):null;
+  if(r){var p=person(r.personId);p.km=Math.max(0,(p.km||0)-r.km);p.times=Math.max(0,(p.times||0)-r.times);
+    store.runs=store.runs.filter(function(x){return x.id!==r.id;});save();}
+  R=null;renderHome();show('home');
+};
 
 $('saveBtn').onclick=function(){
   if(!R)return;
@@ -774,14 +849,24 @@ $('saveBtn').onclick=function(){
   var p=person(R.manual?$('ePerson').value:store.current), wish=$('eWish').value.trim()||p.wish;
   var d=new Date();
   if(R.manual){
+    var secs=parseDur($('eDur').value);
+    if(secs===null){$('durErr').hidden=false;return;}
+    $('durErr').hidden=true;R.secs=secs;
     var m=/^(\d{4})-(\d{2})-(\d{2})$/.exec($('eDate').value);
     if(m)d=new Date(+m[1],+m[2]-1,+m[3]);
-    R.secs=Math.max(0,parseFloat($('eMin').value)||0)*60;
   }
+  var iso=d.getFullYear()+'-'+('0'+(d.getMonth()+1)).slice(-2)+'-'+('0'+d.getDate()).slice(-2);
   var date=(d.getMonth()+1)+'/'+d.getDate();
+  var old=R.editId?runById(R.editId):null;
+  if(old){var op=person(old.personId);op.km=Math.max(0,(op.km||0)-old.km);op.times=Math.max(0,(op.times||0)-old.times);}
   p.km=(p.km||0)+km;p.times=(p.times||0)+times;p.wish=wish;
-  store.runs.push({date:date,to:p.name,personId:p.id,km:km,times:times,secs:Math.round(R.secs),steps:R.steps});
+  var rec={id:old?old.id:'r'+Date.now(),iso:iso,date:date,to:p.name,personId:p.id,km:km,times:times,secs:Math.round(R.secs),steps:R.steps,wish:wish};
+  if(old){for(var i=0;i<store.runs.length;i++)if(store.runs[i].id===old.id)store.runs[i]=rec;
+    store.runs.sort(function(a,b){return isoOf(a)<isoOf(b)?-1:isoOf(a)>isoOf(b)?1:0;});}
+  else store.runs.push(rec);
+  if(R.manual&&!old)store.runs.sort(function(a,b){return isoOf(a)<isoOf(b)?-1:isoOf(a)>isoOf(b)?1:0;});
   save();
+  $('delBtn').hidden=true;$('cancelBtn').hidden=true;
   $('cDate').textContent=d.getFullYear()+' 年 '+(d.getMonth()+1)+' 月 '+d.getDate()+' 日';
   $('cKm').textContent=km.toFixed(1);$('cTimes').textContent=times;$('cMin').textContent=Math.max(1,Math.round(R.secs/60));
   $('cTo').textContent=p.name;$('cWish').textContent=wish;
