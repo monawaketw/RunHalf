@@ -39,6 +39,7 @@ button:focus-visible,input:focus-visible{outline:2px solid var(--gold);outline-o
 .chip[aria-pressed="true"]{border-color:var(--gold);background:var(--gold-soft)}
 .seg{display:flex;gap:8px}
 .seg button{flex:1;min-height:60px;border-radius:14px;border:1.5px solid var(--line);background:var(--panel);color:var(--text);font-size:14px;padding:6px}
+.seg.grid2{display:grid;grid-template-columns:repeat(2,minmax(0,1fr))}
 .seg button small{display:block;font-size:11px;color:var(--muted);margin-top:2px}
 .seg button[aria-pressed="true"]{border-color:var(--gold);background:var(--gold-soft)}
 .seg button[aria-pressed="true"] small{color:var(--gold)}
@@ -119,11 +120,17 @@ label{font-size:12px;color:var(--muted);display:block;margin-bottom:6px}
   </div>
 
   <div>
-    <h2 style="margin-bottom:10px">今天想怎麼跑</h2>
-    <div class="seg" id="modes">
-      <button data-mode="follow" aria-pressed="true">跟著念<small>木魚隨步頻</small></button>
-      <button data-mode="self" aria-pressed="false">自己背<small>背景音樂 · 全文</small></button>
+    <h2 style="margin-bottom:10px">今天想聽什麼</h2>
+    <div class="seg" id="listens">
+      <button data-listen="fish" aria-pressed="true">木魚<small>跟著腳步敲</small></button>
+      <button data-listen="voice" aria-pressed="false">朗誦<small>聽著默念</small></button>
+      <button data-listen="music" aria-pressed="false">背景音樂<small>自己步調背</small></button>
     </div>
+    <div id="voicePick" hidden style="margin-top:10px">
+      <div class="small muted" style="margin-bottom:8px">選一個聲音（點了會試聽）</div>
+      <div class="row" id="voiceChips" style="gap:8px;flex-wrap:wrap"></div>
+    </div>
+    <div class="small muted" id="listenNote" style="margin-top:8px"></div>
   </div>
 
   <div>
@@ -152,11 +159,13 @@ label{font-size:12px;color:var(--muted);display:block;margin-bottom:6px}
       <li>在「今天迴向給」按「＋ 新增」，加上想祝福的人。</li>
       <li>第一次按開始，手機問「動作」或「定位」權限，都按允許。</li>
     </ol>
-    <h3>兩種跑法</h3>
+    <h3>今天想聽什麼</h3>
     <ul>
-      <li><b>跟著念</b>：選木魚聲，木魚會跟著你的腳步快慢敲，一字一聲，適合會背的人。選小夢或小醒，會用自然速度朗誦，跟著默念就好。念完一整部會自動算一遍。</li>
-      <li><b>自己背</b>：播放伴夢伴醒的背景音樂，畫面顯示全文，按自己的步調背，念完一遍自己計次。</li>
+      <li><b>木魚</b>：跟著你的腳步快慢敲，一聲一個字亮起來，適合會背的人。念完一整部會自動算一遍。</li>
+      <li><b>朗誦</b>：小夢或小醒用自然的速度念，你跟著默念就好，不會背也沒關係。念完一整部會自動算一遍。</li>
+      <li><b>背景音樂</b>：放伴夢伴醒的音樂，畫面顯示全文，照自己的步調背，念完自己計次。想安靜的話，跑步畫面上可以把音樂關掉。</li>
     </ul>
+    <p style="margin-top:6px">選過一次會記住，下次打開直接按開始就好。</p>
     <h3>搭配 Strava 一起用</h3>
     <ol>
       <li>先開 Strava 按開始，再回到跑伴按「開始跑伴」。</li>
@@ -221,7 +230,7 @@ label{font-size:12px;color:var(--muted);display:block;margin-bottom:6px}
   </div>
 
   <div class="panel" id="tempoBox">
-    <div>
+    <div id="voiceWrap" hidden>
       <label for="voiceSel">陪念聲音</label>
       <select id="voiceSel"><option value="fish">木魚聲</option><option value="mute">只看字，不出聲</option></select>
     </div>
@@ -332,6 +341,13 @@ var KEY='paoban-v1';
 var store={people:[{id:'all',name:'一切眾生',wish:'願大家都好好的',km:0,times:0}],runs:[],current:'all',mode:'follow',bpm:120,per:1};
 try{var raw=localStorage.getItem(KEY);if(raw){var s=JSON.parse(raw);for(var k in s)store[k]=s[k];}}catch(e){}
 if(store.mode==='quiet')store.mode='follow'; // 「安靜走」已拿掉
+// 「今天想聽什麼」：舊版的設定轉成新的四個選項
+if(!store.listen){
+  if(store.mode==='self')store.listen=(store.bgm===false?'silent':'music');
+  else if(store.voice&&store.voice!=='fish'&&store.voice!=='mute'){store.listen='voice';store.voicePick=store.voice;}
+  else store.listen='fish';
+}
+if(store.listen==='silent'){store.listen='music';store.bgm=false;} // 「安靜」併進背景音樂（音樂關掉就是安靜）
 function save(){try{localStorage.setItem(KEY,JSON.stringify(store));}catch(e){}}
 function person(id){for(var i=0;i<store.people.length;i++)if(store.people[i].id===id)return store.people[i];return store.people[0];}
 
@@ -355,7 +371,8 @@ function renderHome(){
     b.onclick=function(){store.current=p.id;save();renderHome();};
     box.appendChild(b);
   });
-  Array.prototype.forEach.call(document.querySelectorAll('#modes button'),function(b){b.setAttribute('aria-pressed',String(b.dataset.mode===store.mode));});
+  Array.prototype.forEach.call(document.querySelectorAll('#listens button'),function(b){b.setAttribute('aria-pressed',String(b.dataset.listen===store.listen));});
+  renderVoicePick();
   Array.prototype.forEach.call(document.querySelectorAll('#dists button'),function(b){b.setAttribute('aria-pressed',String(b.dataset.dist===(distSelf()?'self':'other')));});
   var rec=$('recent');rec.textContent='';
   var all=store.runs.slice().reverse(), last=showAllRuns?all:all.slice(0,5);
@@ -382,7 +399,41 @@ $('addForm').addEventListener('submit',function(e){
   var p={id:'p'+Date.now(),name:n,wish:$('newWish').value.trim()||'願他平安自在',km:0,times:0};
   store.people.push(p);store.current=p.id;save();$('newName').value='';$('newWish').value='';$('addForm').hidden=true;renderHome();
 });
-Array.prototype.forEach.call(document.querySelectorAll('#modes button'),function(b){b.onclick=function(){store.mode=b.dataset.mode;save();renderHome();};});
+Array.prototype.forEach.call(document.querySelectorAll('#listens button'),function(b){b.onclick=function(){store.listen=b.dataset.listen;save();renderHome();};});
+// 朗誦：選小夢或小醒，點了先試聽一句
+function renderVoicePick(){
+  var box=$('voiceChips'),vs=zhVoices().slice(0,2),names=['小夢','小醒'];
+  $('voicePick').hidden=(store.listen!=='voice'||!vs.length);
+  $('listenNote').textContent=(store.listen==='voice'&&!vs.length)?'這支手機找不到中文朗誦聲音，請改選其他選項。':'';
+  box.textContent='';
+  if(!vs.length)return;
+  var ok=vs.some(function(v){return v.voiceURI===store.voicePick;});
+  if(!ok)store.voicePick=vs[0].voiceURI;
+  vs.forEach(function(v,i){
+    var c=document.createElement('button');c.type='button';c.className='chip';c.textContent=names[i];
+    c.setAttribute('aria-pressed',String(v.voiceURI===store.voicePick));
+    c.onclick=function(){
+      store.voicePick=v.voiceURI;save();renderVoicePick();
+      try{TTS.cancel();var u=new SpeechSynthesisUtterance(spoken('觀自在菩薩'));u.voice=v;u.lang=v.lang;u.rate=0.9;TTS.speak(u);}catch(e){}
+    };
+    box.appendChild(c);
+  });
+}
+// 按開始時，把「想聽什麼」換成實際的設定
+function applyListen(){
+  var l=store.listen;
+  if(l==='voice'){
+    var vs=zhVoices().slice(0,2),ok=vs.some(function(v){return v.voiceURI===store.voicePick;});
+    store.mode='follow';store.voice=ok?store.voicePick:(vs[0]?vs[0].voiceURI:'fish');
+  }
+  else if(l==='music'){store.mode='self';if(store.bgm===undefined)store.bgm=true;}
+  else{store.mode='follow';store.voice='fish';}
+  save();
+}
+function listenLabel(){
+  if(store.listen==='voice'){var vs=zhVoices().slice(0,2);for(var i=0;i<vs.length;i++)if(vs[i].voiceURI===store.voice)return '朗誦 · '+['小夢','小醒'][i];return '朗誦';}
+  return {fish:'木魚',music:'背景音樂'}[store.listen]||'';
+}
 // 距離：預設交給 Strava／手錶（可以鎖屏），或跑伴自己用 GPS 記（螢幕要亮著）
 function distSelf(){return store.distSrc==='self';}
 Array.prototype.forEach.call(document.querySelectorAll('#dists button'),function(b){b.onclick=function(){store.distSrc=b.dataset.dist;save();renderHome();};});
@@ -556,7 +607,8 @@ function fillVoices(){
   if(isVoice()&&vs.slice(0,2).indexOf(voiceObj())<0)store.voice='fish';
   sel.value=store.voice||'fish';
 }
-if(TTS){fillVoices();try{TTS.addEventListener('voiceschanged',fillVoices);}catch(e){TTS.onvoiceschanged=fillVoices;}}
+function onVoicesReady(){fillVoices();if(!$('home').hidden)renderVoicePick();}
+if(TTS){fillVoices();try{TTS.addEventListener('voiceschanged',onVoicesReady);}catch(e){TTS.onvoiceschanged=onVoicesReady;}}
 
 function stopSpeech(){sp.token++;clearInterval(sp.timer);clearTimeout(sp.guard);try{if(TTS)TTS.cancel();}catch(e){}}
 function speakPhrase(pi){
@@ -644,6 +696,7 @@ $('followCad').onclick=function(){store.follow=(store.follow===false);save();syn
 
 /* 開始 */
 $('startBtn').onclick=function(){
+  applyListen();
   // iPhone 要在按鈕當下要權限
   try{if(window.DeviceMotionEvent&&typeof DeviceMotionEvent.requestPermission==='function'){DeviceMotionEvent.requestPermission().then(function(s){if(s==='granted')window.addEventListener('devicemotion',onMotion);}).catch(function(){});}
   else window.addEventListener('devicemotion',onMotion);}catch(e){}
@@ -653,14 +706,14 @@ $('startBtn').onclick=function(){
   }
   R=newRun();mot={smooth:9.8,base:9.8,above:false,last:0};
   var p=person(store.current);$('runTo').textContent=p.name;
-  $('runMode').textContent={follow:'跟著念',self:'自己背',quiet:'安靜走'}[store.mode];
+  $('runMode').textContent=listenLabel();
   $('sutraBox').hidden=(store.mode==='quiet');
-  $('tempoBox').hidden=(store.mode!=='follow');
+  $('tempoBox').hidden=(store.listen!=='fish');
   $('followView').hidden=(store.mode!=='follow');
   $('fullText').hidden=(store.mode!=='self');
   $('plusBtn').hidden=(store.mode==='quiet');
   if(store.mode==='self')$('fullText').textContent=SUTRA;
-  $('bgmRow').hidden=(store.mode!=='self');
+  $('bgmRow').hidden=(store.listen!=='music');
   if(store.mode==='self'){$('bgmBtn').setAttribute('aria-pressed',String(bgmOn()));startBgm();}
   if(store.mode==='follow'){R.charIdx=-1;renderLine();}
   $('pauseBtn').textContent='暫停';$('gpsStatus').textContent='正在找 GPS…';
