@@ -198,7 +198,8 @@ label{font-size:12px;color:var(--muted);display:block;margin-bottom:6px}
 <div id="pocket" hidden>
   <div class="t" id="pTime">00:00</div>
   <div class="t" id="pDist">0.00 公里</div>
-  <div class="hint">長按 2 秒回來</div>
+  <div class="t" id="pCount">已念 0 遍</div>
+  <div class="hint" id="pHint">點兩下 ＋1 遍 · 長按 2 秒回來</div>
   <div id="pocketBar"><i id="pocketFill"></i></div>
 </div>
 
@@ -490,7 +491,7 @@ function tick(){
   $('rDist').textContent=km.toFixed(2);
   $('rPace').textContent=R.dist>50?fmtPace(sec/km):'--';
   $('rSteps').textContent=R.steps.toLocaleString();
-  $('pTime').textContent=fmtTime(sec);$('pDist').textContent=km.toFixed(2)+' 公里';
+  $('pTime').textContent=fmtTime(sec);$('pCount').textContent='已念 '+R.times+' 遍';$('pDist').textContent=km.toFixed(2)+' 公里';
   var bpm=currentBpm();
   $('bpmShow').textContent=bpm;
   $('cadNote').textContent=(store.follow!==false)?(R.cadence>=60?'· 跟著你的腳步':'· 等你走起來…'):'';
@@ -517,7 +518,7 @@ $('startBtn').onclick=function(){
   // iPhone 要在按鈕當下要權限
   try{if(window.DeviceMotionEvent&&typeof DeviceMotionEvent.requestPermission==='function'){DeviceMotionEvent.requestPermission().then(function(s){if(s==='granted')window.addEventListener('devicemotion',onMotion);}).catch(function(){});}
   else window.addEventListener('devicemotion',onMotion);}catch(e){}
-  if(store.mode==='follow'){
+  if(store.mode!=='quiet'){
     unlockIOSAudio();
     try{var AC=window.AudioContext||window.webkitAudioContext;audio={ctx:new AC(),next:0};audio.ctx.resume();audio.next=audio.ctx.currentTime+0.6;}catch(e){audio=null;}
   }
@@ -539,8 +540,65 @@ $('startBtn').onclick=function(){
   timerId=setInterval(tick,500);
   if(audio)schedId=setInterval(scheduler,25);
   if(store.mode==='follow'){fillVoices();syncTempoButtons();if(isVoice())speakPhrase(0);}
+  if(store.mode!=='quiet')setupMediaKeys(true);
+  $('pCount').hidden=$('pHint').hidden=false;
+  if(store.mode==='quiet'){$('pCount').hidden=true;$('pHint').textContent='長按 2 秒回來';}
+  else $('pHint').textContent='點兩下 ＋1 遍 · 長按 2 秒回來';
   show('run');tick();
 };
+
+/* ---------- 計次：按鈕、耳機鍵、口袋模式點兩下都走這裡 ---------- */
+function chime(down){
+  if(!audio)return;
+  try{
+    var ctx=audio.ctx,t=ctx.currentTime+0.02;
+    (down?[1100,880]:[1320,1760]).forEach(function(f,i){
+      var o=ctx.createOscillator(),g=ctx.createGain(),s=t+i*0.12;
+      o.type='sine';o.frequency.setValueAtTime(f,s);
+      g.gain.setValueAtTime(0.0001,s);g.gain.exponentialRampToValueAtTime(0.35,s+0.01);g.gain.exponentialRampToValueAtTime(0.0001,s+0.35);
+      o.connect(g);g.connect(ctx.destination);o.start(s);o.stop(s+0.4);
+    });
+  }catch(e){}
+}
+function announce(text,after){
+  var v=voiceObj()||zhVoices()[0];
+  if(!TTS||!v){if(after)setTimeout(after,600);return;}
+  try{
+    var u=new SpeechSynthesisUtterance(text);u.voice=v;u.lang=v.lang;u.rate=1;
+    var fired=false;function go(){if(fired)return;fired=true;if(after)after();}
+    u.onend=go;u.onerror=go;setTimeout(go,4000);
+    TTS.speak(u);
+  }catch(e){if(after)after();}
+}
+function addCount(d){
+  if(!R||R.ended||store.mode==='quiet')return;
+  if(d<0){if(R.times===0)return;R.times--;}else R.times++;
+  var restart=(d>0&&store.mode==='follow');
+  if(restart){R.charIdx=-1;renderLine();}
+  stopSpeech();
+  if(audio&&store.mode==='follow')audio.next=audio.ctx.currentTime+2.2;
+  chime(d<0);
+  setTimeout(function(){
+    announce((d<0?'減一，':'')+'第 '+R.times+' 遍',function(){
+      if(R&&!R.ended&&!R.pausedAt&&store.mode==='follow'&&isVoice())speakPhrase(restart?0:currentPhrase());
+    });
+  },450);
+  tick();
+}
+// 耳機上的播放/暫停、下一首 = ＋1；上一首 = 減一
+function setupMediaKeys(on){
+  if(!('mediaSession' in navigator))return;
+  var ms=navigator.mediaSession,last=0;
+  if(on){try{ms.metadata=new MediaMetadata({title:'跑伴 · 心經',artist:'伴夢伴醒'});ms.playbackState='playing';}catch(e){}}
+  function hit(d){
+    var n=Date.now();if(n-last<900)return;last=n;
+    addCount(d);
+    try{if(silentEl)silentEl.play();ms.playbackState='playing';}catch(e){}
+  }
+  [['play',1],['pause',1],['nexttrack',1],['previoustrack',-1]].forEach(function(a){
+    try{ms.setActionHandler(a[0],on?function(){hit(a[1]);}:null);}catch(e){}
+  });
+}
 
 $('pauseBtn').onclick=function(){
   if(!R)return;
@@ -548,7 +606,7 @@ $('pauseBtn').onclick=function(){
   else{R.pausedAt=Date.now();$('pauseBtn').textContent='繼續';stopSpeech();}
   tick();
 };
-$('plusBtn').onclick=function(){if(!R)return;R.times++;if(store.mode==='follow'){R.charIdx=-1;if(audio)audio.next=audio.ctx.currentTime+0.3;renderLine();if(isVoice()){stopSpeech();speakPhrase(0);}}tick();};
+$('plusBtn').onclick=function(){addCount(1);};
 
 /* 口袋模式：全黑、長按 2 秒回來 */
 $('pocketBtn').onclick=function(){$('pocket').hidden=false;};
@@ -556,7 +614,14 @@ $('pocketBtn').onclick=function(){$('pocket').hidden=false;};
   var holdT=null,startT=0,raf=null,pk=$('pocket');
   function fill(){var p=Math.min(1,(Date.now()-startT)/2000);$('pocketFill').style.width=(p*100)+'%';if(p>=1){pk.hidden=true;end();return;}raf=requestAnimationFrame(fill);}
   function end(){cancelAnimationFrame(raf);$('pocketFill').style.width='0';}
+  var lastTap=0;
   pk.addEventListener('pointerdown',function(e){e.preventDefault();startT=Date.now();raf=requestAnimationFrame(fill);});
+  pk.addEventListener('pointerup',function(){
+    var now=Date.now();
+    if(now-startT<300){ // 短按：兩下算 ＋1
+      if(now-lastTap<450){lastTap=0;addCount(1);}else lastTap=now;
+    }
+  });
   ['pointerup','pointercancel','pointerleave'].forEach(function(ev){pk.addEventListener(ev,end);});
   pk.addEventListener('contextmenu',function(e){e.preventDefault();});
 })();
@@ -573,6 +638,7 @@ $('endBtn').onclick=function(){
   try{if(audio)audio.ctx.close();}catch(e){}
   try{if(silentEl)silentEl.pause();}catch(e){}
   stopSpeech();
+  setupMediaKeys(false);
   audio=null;
   var p=person(store.current);
   $('eKm').value=(R.dist/1000).toFixed(2);
