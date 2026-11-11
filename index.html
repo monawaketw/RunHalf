@@ -39,6 +39,26 @@ button:focus-visible,input:focus-visible{outline:2px solid var(--gold);outline-o
 .chip[aria-pressed="true"]{border-color:var(--gold);background:var(--gold-soft)}
 .seg{display:flex;gap:8px}
 .seg button{flex:1;min-height:60px;border-radius:14px;border:1.5px solid var(--line);background:var(--panel);color:var(--text);font-size:14px;padding:6px}
+.stat.tap{border:none;text-align:left;color:var(--text);font-family:inherit;cursor:pointer}
+.stat.tap .k{color:var(--gold)}
+.back{background:none;border:none;color:var(--gold);font-size:15px;min-height:44px;padding:0;align-self:flex-start;font-family:inherit}
+.fold{background:var(--panel);border-radius:16px;padding:0 16px}
+.fold summary{list-style:none;cursor:pointer;min-height:56px;display:flex;justify-content:space-between;align-items:center;gap:10px}
+.fold summary::-webkit-details-marker{display:none}
+.fold summary .t{font-size:15px;font-weight:500}
+.fold summary .s{font-size:12px;color:var(--muted);text-align:right}
+.fold summary::after{content:'›';color:var(--muted);font-size:18px;transition:transform .15s}
+.fold[open] summary::after{transform:rotate(90deg)}
+.fold .list{padding-bottom:8px}
+.chip .x{margin-left:6px;color:var(--muted)}
+.chip.armed{border-color:var(--sun);color:var(--sun)}
+.calgrid{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:4px;text-align:center}
+#calHead div{font-size:11px;color:var(--muted);padding:4px 0}
+.cday{aspect-ratio:1;max-width:100%;display:flex;align-items:center;justify-content:center;border-radius:50%;font-size:13px;color:var(--muted);font-variant-numeric:tabular-nums}
+.cday.on{background:var(--gold);color:var(--ink);font-weight:700}
+.cday.today{box-shadow:inset 0 0 0 1.5px var(--gold);color:var(--text)}
+.cday.on.today{box-shadow:0 0 0 2px var(--ink),0 0 0 3.5px var(--gold)}
+.stat .v small{font-size:14px;font-weight:500;color:var(--gold)}
 .seg.grid2{display:grid;grid-template-columns:repeat(2,minmax(0,1fr))}
 .seg button small{display:block;font-size:11px;color:var(--muted);margin-top:2px}
 .seg button[aria-pressed="true"]{border-color:var(--gold);background:var(--gold-soft)}
@@ -104,13 +124,14 @@ label{font-size:12px;color:var(--muted);display:block;margin-bottom:6px}
   </div>
 
   <div class="grid3">
-    <div class="panel stat"><div class="k">累積距離</div><div class="v" id="totKm">0<span> 公里</span></div></div>
-    <div class="panel stat"><div class="k">心經</div><div class="v" id="totTimes">0<span> 遍</span></div></div>
-    <div class="panel stat"><div class="k">跑伴次數</div><div class="v" id="totRuns">0<span> 次</span></div></div>
+    <button class="panel stat tap" id="openRecords"><div class="k">累積距離 ›</div><div class="v" id="totKm">0<span> 公里</span></div></button>
+    <button class="panel stat tap" id="openDedi"><div class="k">心經 ›</div><div class="v" id="totTimes">0<span> 遍</span></div></button>
+    <button class="panel stat tap" id="openCal"><div class="k">連續天數 ›</div><div class="v" id="streak">0<span> 天</span></div></button>
   </div>
 
   <div>
-    <div class="row between" style="margin-bottom:10px"><h2>今天迴向給</h2><button class="small" id="addToggle" style="background:none;border:none;color:var(--gold);min-height:44px">＋ 新增</button></div>
+    <div class="row between" style="margin-bottom:10px"><h2>今天迴向給</h2><div class="row" style="gap:14px"><button class="small" id="manageToggle" style="background:none;border:none;color:var(--muted);min-height:44px">管理</button><button class="small" id="addToggle" style="background:none;border:none;color:var(--gold);min-height:44px">＋ 新增</button></div></div>
+    <div class="small muted" id="manageNote" hidden style="margin-bottom:8px">點名字旁的 ✕ 刪除，要按兩次。過去的迴向紀錄會留著。</div>
     <div class="row" id="people" style="flex-wrap:wrap;gap:8px"></div>
     <form id="addForm" class="panel" hidden style="margin-top:10px;display:flex;flex-direction:column;gap:10px">
       <div><label for="newName">想祝福的人</label><input type="text" id="newName" maxlength="12" placeholder="例如：媽媽"></div>
@@ -145,10 +166,6 @@ label{font-size:12px;color:var(--muted);display:block;margin-bottom:6px}
   <div class="status" id="homeStatus"></div>
   <button class="btn ghost" id="manualBtn">＋ 補記一筆</button>
 
-  <div class="panel">
-    <h2 style="margin-bottom:6px">最近的跑伴</h2>
-    <div class="list" id="recent"></div>
-  </div>
   <details class="panel guide">
     <summary>使用說明</summary>
     <h3>跑伴是什麼</h3>
@@ -191,6 +208,44 @@ label{font-size:12px;color:var(--muted);display:block;margin-bottom:6px}
   </details>
 
   <p class="small muted" style="margin:0;line-height:1.7">測試版：紀錄存在這支手機的瀏覽器裡。建議用「加入主畫面」打開，資料比較不會被清掉。</p>
+</div>
+</section>
+
+<!-- 所有紀錄（依月份收合） -->
+<section id="records" hidden>
+<div class="wrap">
+  <button class="back" data-back>‹ 回首頁</button>
+  <div><h2 style="font-size:22px;font-family:var(--serif)">所有紀錄</h2><div class="small muted" id="recSum" style="margin-top:6px"></div></div>
+  <div class="small muted">點一筆可以修改或刪除。</div>
+  <div id="recList" style="display:flex;flex-direction:column;gap:10px"></div>
+</div>
+</section>
+
+<!-- 迴向紀錄（依對象） -->
+<section id="dedi" hidden>
+<div class="wrap">
+  <button class="back" data-back>‹ 回首頁</button>
+  <div><h2 style="font-size:22px;font-family:var(--serif)">迴向紀錄</h2><div class="small muted" id="dediSum" style="margin-top:6px"></div></div>
+  <div id="dediList" style="display:flex;flex-direction:column;gap:10px"></div>
+</div>
+</section>
+
+<!-- 月曆：跑過的日子亮起來 -->
+<section id="cal" hidden>
+<div class="wrap">
+  <button class="back" data-back>‹ 回首頁</button>
+  <div><h2 style="font-size:22px;font-family:var(--serif)">跑伴月曆</h2><div class="small muted" id="calSum" style="margin-top:6px"></div></div>
+  <div class="panel">
+    <div class="row between" style="margin-bottom:10px">
+      <button class="round" id="calPrev" aria-label="上個月">‹</button>
+      <div style="font-size:16px;font-weight:500" id="calTitle"></div>
+      <button class="round" id="calNext" aria-label="下個月">›</button>
+    </div>
+    <div class="calgrid" id="calHead"></div>
+    <div class="calgrid" id="calDays"></div>
+    <div class="small muted" id="calMonth" style="margin-top:12px;text-align:center"></div>
+  </div>
+  <p class="small muted" style="margin:0;line-height:1.7">不用每天跑很遠，走一小段、念一遍也算。斷了也沒關係，明天再接上就好。</p>
 </div>
 </section>
 
@@ -349,10 +404,11 @@ if(!store.listen){
 }
 if(store.listen==='silent'){store.listen='music';store.bgm=false;} // 「安靜」併進背景音樂（音樂關掉就是安靜）
 function save(){try{localStorage.setItem(KEY,JSON.stringify(store));}catch(e){}}
+function findPerson(id){for(var i=0;i<store.people.length;i++)if(store.people[i].id===id)return store.people[i];return null;}
 function person(id){for(var i=0;i<store.people.length;i++)if(store.people[i].id===id)return store.people[i];return store.people[0];}
 
 var $=function(id){return document.getElementById(id);};
-function show(id){['home','run','done'].forEach(function(s){$(s).hidden=(s!==id);});window.scrollTo(0,0);}
+function show(id){['home','run','done','records','dedi','cal'].forEach(function(s){$(s).hidden=(s!==id);});window.scrollTo(0,0);}
 function fmtTime(sec){sec=Math.max(0,Math.floor(sec));var h=Math.floor(sec/3600),m=Math.floor(sec%3600/60),s=sec%60;var mm=(m<10?'0':'')+m,ss=(s<10?'0':'')+s;return h?h+':'+mm+':'+ss:mm+':'+ss;}
 function fmtPace(secPerKm){if(!isFinite(secPerKm)||secPerKm<=0||secPerKm>3600)return'--';var m=Math.floor(secPerKm/60),s=Math.round(secPerKm%60);if(s===60){m++;s=0;}return m+"'"+(s<10?'0':'')+s+'"';}
 
@@ -362,38 +418,144 @@ function renderHome(){
   var km=0,times=0;store.runs.forEach(function(r){km+=r.km;times+=r.times;});
   $('totKm').innerHTML=km.toFixed(1)+'<span> 公里</span>';
   $('totTimes').innerHTML=times+'<span> 遍</span>';
-  $('totRuns').innerHTML=store.runs.length+'<span> 次</span>';
-  var box=$('people');box.textContent='';
-  store.people.forEach(function(p){
-    var b=document.createElement('button');b.className='chip';b.type='button';
-    b.setAttribute('aria-pressed',String(p.id===store.current));
-    b.textContent=p.name+(p.km?' · '+p.km.toFixed(1)+'km':'');
-    b.onclick=function(){store.current=p.id;save();renderHome();};
-    box.appendChild(b);
-  });
+  var st=streakNow();
+  $('streak').innerHTML=st>0?st+'<span> 天</span>':'<small>今天開始</small>';
+  renderPeople();
   Array.prototype.forEach.call(document.querySelectorAll('#listens button'),function(b){b.setAttribute('aria-pressed',String(b.dataset.listen===store.listen));});
   renderVoicePick();
   Array.prototype.forEach.call(document.querySelectorAll('#dists button'),function(b){b.setAttribute('aria-pressed',String(b.dataset.dist===(distSelf()?'self':'other')));});
-  var rec=$('recent');rec.textContent='';
-  var all=store.runs.slice().reverse(), last=showAllRuns?all:all.slice(0,5);
-  if(!last.length){var e=document.createElement('div');e.className='small muted';e.textContent='還沒有紀錄。第一次跑完，這裡會出現你的第一筆。';rec.appendChild(e);}
-  last.forEach(function(r){
-    // 點一筆紀錄就能修改或刪除
-    var it=document.createElement('button');it.type='button';it.className='item';
-    var a=document.createElement('span');a.textContent=r.date+' · 給 '+r.to;
-    var b=document.createElement('span');b.className='num muted';b.textContent=r.km.toFixed(2)+' km · '+r.times+' 遍'+(r.secs?' · '+fmtTime(r.secs):'')+' ›';
-    it.appendChild(a);it.appendChild(b);it.onclick=function(){openEditor(r);};rec.appendChild(it);
-  });
-  if(all.length>5){
-    var more=document.createElement('button');more.type='button';more.className='small';
-    more.style.cssText='background:none;border:none;color:var(--gold);min-height:44px;align-self:flex-start;padding:0';
-    more.textContent=showAllRuns?'收起':'看全部 '+all.length+' 筆';
-    more.onclick=function(){showAllRuns=!showAllRuns;renderHome();};
-    rec.appendChild(more);
-  }
 }
-var showAllRuns=false;
-$('addToggle').onclick=function(){$('addForm').hidden=!$('addForm').hidden;if(!$('addForm').hidden)$('newName').focus();};
+
+/* 迴向對象：平常點名字選擇；按「管理」後可以刪除（按兩次） */
+var managing=false, armedId=null;
+function renderPeople(){
+  var box=$('people');box.textContent='';
+  $('manageToggle').textContent=managing?'完成':'管理';
+  $('manageNote').hidden=!managing;
+  store.people.forEach(function(p){
+    var b=document.createElement('button');b.className='chip';b.type='button';
+    if(managing){
+      var armed=(armedId===p.id);
+      if(armed)b.className='chip armed';
+      b.textContent=armed?'再按一次刪除「'+p.name+'」':p.name;
+      if(!armed){var x=document.createElement('span');x.className='x';x.textContent='✕';b.appendChild(x);}
+      b.setAttribute('aria-label',armed?'確定刪除 '+p.name:'刪除 '+p.name);
+      b.onclick=function(){
+        if(armedId!==p.id){armedId=p.id;renderPeople();return;}
+        store.people=store.people.filter(function(q){return q.id!==p.id;});
+        if(!store.people.length)store.people=[{id:'all',name:'一切眾生',wish:'願大家都好好的',km:0,times:0}];
+        if(!store.people.some(function(q){return q.id===store.current;}))store.current=store.people[0].id;
+        armedId=null;save();renderPeople();
+      };
+    }else{
+      b.setAttribute('aria-pressed',String(p.id===store.current));
+      b.textContent=p.name;
+      b.onclick=function(){store.current=p.id;save();renderPeople();};
+    }
+    box.appendChild(b);
+  });
+}
+$('manageToggle').onclick=function(){managing=!managing;armedId=null;$('addForm').hidden=true;renderPeople();};
+
+/* 累積距離 › 所有紀錄：依月份收合，最新的月份預設打開 */
+function sortedRuns(){return store.runs.slice().sort(function(a,b){var x=isoOf(a),y=isoOf(b);return x<y?1:x>y?-1:0;});}
+function recordItem(r,showTo){
+  var it=document.createElement('button');it.type='button';it.className='item';
+  var a=document.createElement('span');a.textContent=r.date+(showTo?' · 給 '+r.to:'');
+  var b=document.createElement('span');b.className='num muted';
+  b.textContent=r.km.toFixed(2)+' km · '+r.times+' 遍'+(r.secs?' · '+fmtTime(r.secs):'')+' ›';
+  it.appendChild(a);it.appendChild(b);it.onclick=function(){openEditor(r);};
+  return it;
+}
+function sumOf(list){var km=0,t=0;list.forEach(function(r){km+=r.km;t+=r.times;});return {km:km,times:t,n:list.length};}
+function renderRecords(){
+  var runs=sortedRuns(),box=$('recList');box.textContent='';
+  var all=sumOf(runs);
+  $('recSum').textContent='共 '+all.n+' 次 · '+all.km.toFixed(1)+' 公里 · '+all.times+' 遍';
+  if(!runs.length){var e=document.createElement('div');e.className='small muted';e.textContent='還沒有紀錄。跑完一次或補記一筆，這裡就會出現。';box.appendChild(e);return;}
+  var groups=[],map={};
+  runs.forEach(function(r){var k=isoOf(r).slice(0,7);if(!map[k]){map[k]=[];groups.push(k);}map[k].push(r);});
+  groups.forEach(function(k,gi){
+    var list=map[k],sm=sumOf(list);
+    var d=document.createElement('details');d.className='fold';if(gi===0)d.open=true;
+    var su=document.createElement('summary');
+    var t=document.createElement('span');t.className='t';t.textContent=k.slice(0,4)+' 年 '+(+k.slice(5,7))+' 月';
+    var s2=document.createElement('span');s2.className='s num';s2.textContent=sm.n+' 次 · '+sm.km.toFixed(1)+' km · '+sm.times+' 遍';
+    su.appendChild(t);su.appendChild(s2);d.appendChild(su);
+    var l=document.createElement('div');l.className='list';
+    list.forEach(function(r){l.appendChild(recordItem(r,true));});
+    d.appendChild(l);box.appendChild(d);
+  });
+}
+
+/* 心經 › 迴向紀錄：每個人累積了幾遍、幾公里 */
+function renderDedi(){
+  var box=$('dediList');box.textContent='';
+  var map={},order=[];
+  sortedRuns().forEach(function(r){var k=r.to;if(!map[k]){map[k]=[];order.push(k);}map[k].push(r);});
+  order.sort(function(a,b){return sumOf(map[b]).times-sumOf(map[a]).times;});
+  $('dediSum').textContent=order.length?'迴向給 '+order.length+' 位':'';
+  if(!order.length){var e=document.createElement('div');e.className='small muted';e.textContent='還沒有迴向紀錄。';box.appendChild(e);return;}
+  order.forEach(function(name){
+    var list=map[name],sm=sumOf(list);
+    var d=document.createElement('details');d.className='fold';
+    var su=document.createElement('summary');
+    var t=document.createElement('span');t.className='t';t.textContent=name;
+    var s2=document.createElement('span');s2.className='s num';s2.innerHTML='';
+    var big=document.createElement('b');big.style.cssText='color:var(--gold);font-size:16px';big.textContent=sm.times+' 遍';
+    s2.appendChild(big);s2.appendChild(document.createTextNode(' · '+sm.km.toFixed(1)+' km · '+sm.n+' 次'));
+    su.appendChild(t);su.appendChild(s2);d.appendChild(su);
+    var l=document.createElement('div');l.className='list';
+    list.forEach(function(r){l.appendChild(recordItem(r,false));});
+    d.appendChild(l);box.appendChild(d);
+  });
+}
+/* 連續天數：算到今天，今天還沒跑的話算到昨天，不會因為早上還沒出門就歸零 */
+function dayKey(d){return d.getFullYear()+'-'+('0'+(d.getMonth()+1)).slice(-2)+'-'+('0'+d.getDate()).slice(-2);}
+function runDays(){var m={};store.runs.forEach(function(r){m[isoOf(r)]=(m[isoOf(r)]||0)+1;});return m;}
+function streakNow(){
+  var days=runDays(),d=new Date(),n=0;
+  if(!days[dayKey(d)])d.setDate(d.getDate()-1);
+  while(days[dayKey(d)]){n++;d.setDate(d.getDate()-1);}
+  return n;
+}
+function longestStreak(){
+  var keys=Object.keys(runDays()).sort(),best=0,cur=0,prev=null;
+  keys.forEach(function(k){
+    var p=k.split('-'),d=new Date(+p[0],+p[1]-1,+p[2]);
+    if(prev&&Math.round((d-prev)/86400000)===1)cur++;else cur=1;
+    if(cur>best)best=cur;prev=d;
+  });
+  return best;
+}
+var calView=null;
+function renderCal(){
+  var now=new Date();if(!calView)calView=new Date(now.getFullYear(),now.getMonth(),1);
+  var y=calView.getFullYear(),m=calView.getMonth(),days=runDays();
+  $('calTitle').textContent=y+' 年 '+(m+1)+' 月';
+  var st=streakNow();
+  $('calSum').textContent=(st>0?'已經連續 '+st+' 天':'今天就是新的開始')+' · 最長連續 '+longestStreak()+' 天 · 總共 '+store.runs.length+' 次';
+  var h=$('calHead');if(!h.childNodes.length)'日一二三四五六'.split('').forEach(function(c){var e=document.createElement('div');e.textContent=c;h.appendChild(e);});
+  var box=$('calDays');box.textContent='';
+  var first=new Date(y,m,1).getDay(),total=new Date(y,m+1,0).getDate(),count=0;
+  for(var i=0;i<first;i++)box.appendChild(document.createElement('div'));
+  for(var dd=1;dd<=total;dd++){
+    var k=y+'-'+('0'+(m+1)).slice(-2)+'-'+('0'+dd).slice(-2),c=document.createElement('div');
+    c.className='cday'+(days[k]?' on':'')+(k===dayKey(now)?' today':'');
+    c.textContent=dd;if(days[k]){count++;c.setAttribute('aria-label',dd+' 日有跑');}
+    box.appendChild(c);
+  }
+  $('calMonth').textContent=count?'這個月跑了 '+count+' 天':'這個月還沒有紀錄';
+  $('calNext').disabled=(y===now.getFullYear()&&m===now.getMonth());
+  $('calNext').style.opacity=$('calNext').disabled?'.3':'1';
+}
+$('calPrev').onclick=function(){calView=new Date(calView.getFullYear(),calView.getMonth()-1,1);renderCal();};
+$('calNext').onclick=function(){calView=new Date(calView.getFullYear(),calView.getMonth()+1,1);renderCal();};
+$('openCal').onclick=function(){calView=null;renderCal();show('cal');};
+$('openRecords').onclick=function(){renderRecords();show('records');};
+$('openDedi').onclick=function(){renderDedi();show('dedi');};
+Array.prototype.forEach.call(document.querySelectorAll('[data-back]'),function(b){b.onclick=function(){renderHome();show('home');};});
+$('addToggle').onclick=function(){if(managing){managing=false;armedId=null;renderPeople();}$('addForm').hidden=!$('addForm').hidden;if(!$('addForm').hidden)$('newName').focus();};
 $('addForm').addEventListener('submit',function(e){
   e.preventDefault();var n=$('newName').value.trim();if(!n)return;
   var p={id:'p'+Date.now(),name:n,wish:$('newWish').value.trim()||'願他平安自在',km:0,times:0};
@@ -871,6 +1033,7 @@ function openEditor(run){
   R={manual:true,ended:true,secs:0,steps:run?run.steps||0:0,times:0,dist:0,editId:run?run.id:null};
   var sel=$('ePerson');sel.textContent='';
   store.people.forEach(function(p){var o=document.createElement('option');o.value=p.id;o.textContent=p.name;sel.appendChild(o);});
+  if(run&&!findPerson(run.personId)){var o=document.createElement('option');o.value=run.personId;o.textContent=run.to+'（已從名單移除）';sel.appendChild(o);}
   sel.value=run?run.personId:store.current;
   $('eDate').value=run?isoOf(run):todayISO();$('eDate').max=todayISO();
   $('eDur').value=run?fmtDur(run.secs):'';
@@ -894,7 +1057,7 @@ $('delBtn').onclick=function(){
   var b=this;
   if(!b.dataset.armed){b.dataset.armed='1';b.textContent='確定刪除？再按一次';return;}
   var r=R&&R.editId?runById(R.editId):null;
-  if(r){var p=person(r.personId);p.km=Math.max(0,(p.km||0)-r.km);p.times=Math.max(0,(p.times||0)-r.times);
+  if(r){var p=findPerson(r.personId)||{};p.km=Math.max(0,(p.km||0)-r.km);p.times=Math.max(0,(p.times||0)-r.times);
     store.runs=store.runs.filter(function(x){return x.id!==r.id;});save();}
   R=null;renderHome();show('home');
 };
@@ -902,7 +1065,9 @@ $('delBtn').onclick=function(){
 $('saveBtn').onclick=function(){
   if(!R)return;
   var km=Math.max(0,parseFloat($('eKm').value)||0), times=Math.max(0,parseInt($('eTimes').value,10)||0);
-  var p=person(R.manual?$('ePerson').value:store.current), wish=$('eWish').value.trim()||p.wish;
+  var pid=R.manual?$('ePerson').value:store.current, oldRun=R.editId?runById(R.editId):null;
+  var p=findPerson(pid)||{id:pid,name:(oldRun&&oldRun.to)||'',wish:(oldRun&&oldRun.wish)||'',km:0,times:0};
+  var wish=$('eWish').value.trim()||p.wish;
   var d=new Date();
   if(R.manual){
     var secs=parseDur($('eDur').value);
@@ -914,7 +1079,7 @@ $('saveBtn').onclick=function(){
   var iso=d.getFullYear()+'-'+('0'+(d.getMonth()+1)).slice(-2)+'-'+('0'+d.getDate()).slice(-2);
   var date=(d.getMonth()+1)+'/'+d.getDate();
   var old=R.editId?runById(R.editId):null;
-  if(old){var op=person(old.personId);op.km=Math.max(0,(op.km||0)-old.km);op.times=Math.max(0,(op.times||0)-old.times);}
+  if(old){var op=findPerson(old.personId)||{};op.km=Math.max(0,(op.km||0)-old.km);op.times=Math.max(0,(op.times||0)-old.times);}
   p.km=(p.km||0)+km;p.times=(p.times||0)+times;p.wish=wish;
   var rec={id:old?old.id:'r'+Date.now(),iso:iso,date:date,to:p.name,personId:p.id,km:km,times:times,secs:Math.round(R.secs),steps:R.steps,wish:wish};
   if(old){for(var i=0;i<store.runs.length;i++)if(store.runs[i].id===old.id)store.runs[i]=rec;
