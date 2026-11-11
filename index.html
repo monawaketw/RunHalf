@@ -132,6 +132,31 @@ label{font-size:12px;color:var(--muted);display:block;margin-bottom:6px}
     <div class="small" style="line-height:1.8;margin-top:6px;color:#e8e2cc" id="inappText"></div>
     <a class="btn" id="inappBtn" hidden style="display:flex;align-items:center;justify-content:center;text-decoration:none;margin-top:10px">用 Chrome 打開</a>
   </div>
+<script>
+/* 從 LINE、IG、FB、Threads 點進來時，紀錄會存在那個 App 裡，換個地方開就看不到；
+   LINE 可以自動跳出去，其他的提醒使用者換到手機瀏覽器 */
+(function(){
+  var ua=navigator.userAgent||'',app=null;
+  if(/\bLine\//i.test(ua))app='LINE';
+  else if(/Instagram/i.test(ua))app='Instagram';
+  else if(/Barcelona/i.test(ua))app='Threads';
+  else if(/FBAN|FBAV|FB_IAB/i.test(ua))app='Facebook';
+  // 其他認不出名字的 App 內建瀏覽器：iPhone 上沒有 Safari 字樣、又不是從主畫面打開的
+  else if(/iPhone|iPad/i.test(ua)&&!/Safari\//i.test(ua)&&!navigator.standalone)app='這個 App';
+  if(!app)return;
+  if(app==='LINE'&&!/openExternalBrowser=1/.test(location.search)){
+    location.replace(location.origin+location.pathname+'?openExternalBrowser=1');return;
+  }
+  var android=/Android/i.test(ua);
+  document.getElementById('inappText').textContent='你現在是在 '+app+' 裡面打開跑伴，紀錄會存在 '+app+' 裡，之後從主畫面或其他地方打開會看不到。'+
+    (android?'請按下面的按鈕，或點右上角「⋮」→「在 Chrome 中開啟」。':'請點右上角「⋯」→「在外部瀏覽器開啟」（或「在 Safari 開啟」），再加到主畫面。');
+  if(android){
+    document.getElementById('inappBtn').href='intent://'+location.host+location.pathname+'#Intent;scheme=https;package=com.android.chrome;end';
+    document.getElementById('inappBtn').hidden=false;
+  }
+  document.getElementById('inapp').hidden=false;
+})();
+</script>
   <div class="row between" style="align-items:flex-end">
     <div><div class="small muted" id="today"></div><h1>跑伴</h1></div>
     <div class="small muted">伴夢伴醒</div>
@@ -1278,27 +1303,6 @@ reportHistory();flushOutbox();loadTogether();
 
 $('homeBtn').onclick=function(){R=null;renderHome();show('home');setTimeout(loadTogether,3000);};
 
-/* 從 LINE、IG、FB、Threads 點進來時，紀錄會存在那個 App 裡，換個地方開就看不到；
-   LINE 可以自動跳出去，其他的提醒使用者換到手機瀏覽器 */
-(function(){
-  var ua=navigator.userAgent||'',app=null;
-  if(/\bLine\//i.test(ua))app='LINE';
-  else if(/Instagram/i.test(ua))app='Instagram';
-  else if(/Barcelona/i.test(ua))app='Threads';
-  else if(/FBAN|FBAV|FB_IAB/i.test(ua))app='Facebook';
-  if(!app)return;
-  if(app==='LINE'&&!/openExternalBrowser=1/.test(location.search)){
-    location.replace(location.origin+location.pathname+'?openExternalBrowser=1');return;
-  }
-  var android=/Android/i.test(ua);
-  $('inappText').textContent='你現在是在 '+app+' 裡面打開跑伴，紀錄會存在 '+app+' 裡，之後從主畫面或其他地方打開會看不到。'+
-    (android?'請按下面的按鈕，或點右上角「⋮」→「在 Chrome 中開啟」。':'請點右上角「⋯」→「在外部瀏覽器開啟」（或「在 Safari 開啟」），再加到主畫面。');
-  if(android){
-    $('inappBtn').href='intent://'+location.host+location.pathname+'#Intent;scheme=https;package=com.android.chrome;end';
-    $('inappBtn').hidden=false;
-  }
-  $('inapp').hidden=false;
-})();
 
 if(!('geolocation' in navigator))$('homeStatus').textContent='這個瀏覽器不支援定位，距離需要手動填。';
 renderHome();
