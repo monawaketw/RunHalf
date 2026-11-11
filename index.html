@@ -59,6 +59,9 @@ button:focus-visible,input:focus-visible{outline:2px solid var(--gold);outline-o
 .cday.today{box-shadow:inset 0 0 0 1.5px var(--gold);color:var(--text)}
 .cday.on.today{box-shadow:0 0 0 2px var(--ink),0 0 0 3.5px var(--gold)}
 .stat .v small{font-size:14px;font-weight:500;color:var(--gold)}
+.grid2c{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+#shareView{position:fixed;inset:0;z-index:60;background:rgba(10,10,24,.96);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;padding:calc(16px + env(safe-area-inset-top,0px)) max(16px,env(safe-area-inset-right,0px)) calc(16px + env(safe-area-inset-bottom,0px)) max(16px,env(safe-area-inset-left,0px))}
+#shareImg{max-width:100%;max-height:68vh;border-radius:12px;-webkit-touch-callout:default}
 .seg.grid2{display:grid;grid-template-columns:repeat(2,minmax(0,1fr))}
 .seg button small{display:block;font-size:11px;color:var(--muted);margin-top:2px}
 .seg button[aria-pressed="true"]{border-color:var(--gold);background:var(--gold-soft)}
@@ -198,6 +201,14 @@ label{font-size:12px;color:var(--muted);display:block;margin-bottom:6px}
     </ul>
     <h3>補記一筆</h3>
     <p>沒開跑伴也跑了、背了？按「＋ 補記一筆」，填日期、公里、時間和遍數，一樣會累積、會有迴向卡。</p>
+    <h3>沒有 Strava？用手機的健康 app</h3>
+    <p>手機放口袋就會自動記錄走了多遠，不用另外下載。最簡單的方法是<b>出門前看一次、回來再看一次，兩個數字相減</b>，就是這次的公里數。</p>
+    <ul>
+      <li><b>iPhone</b>：打開「健康」→ 下方「瀏覽」→「活動」→「步行＋跑步距離」，最上面的大數字就是今天走的公里數。往下滑按「加入喜好項目」，以後一打開健康就在第一頁看得到。</li>
+      <li><b>Android</b>：打開手機的健康 app（三星是「Samsung Health」，其他品牌常見的是「Google Fit」或「Fitbit」），點「步數」，裡面會寫今天走了幾公里。</li>
+      <li>跑伴結束時會寫「這次從幾點到幾點」，健康 app 裡的長條圖也是按時間排的，可以對照。</li>
+      <li>不想算的話，也可以選「跑伴自己記」，讓跑伴用 GPS 記距離，手機要開著，可以用口袋模式。</li>
+    </ul>
     <h3>聽不到聲音？</h3>
     <ul>
       <li>把手機音量調大，媒體音量也要開。</li>
@@ -263,9 +274,8 @@ label{font-size:12px;color:var(--muted);display:block;margin-bottom:6px}
     <div class="dist" id="rDist">0.00</div>
     <div class="small muted" style="text-align:center;margin-top:4px">公里</div>
   </div>
-  <div class="grid3" style="text-align:center">
+  <div class="grid2c" style="text-align:center">
     <div><div class="num" style="font-size:20px;font-weight:500" id="rTime">00:00</div><div class="small muted">時間</div></div>
-    <div><div class="num" style="font-size:20px;font-weight:500" id="rPace">--</div><div class="small muted">配速</div></div>
     <div><div class="num" style="font-size:20px;font-weight:500" id="rSteps">0</div><div class="small muted">步數</div></div>
   </div>
   <div class="status" id="gpsStatus">正在找 GPS…</div>
@@ -321,6 +331,13 @@ label{font-size:12px;color:var(--muted);display:block;margin-bottom:6px}
 </div>
 </section>
 
+<!-- 分享圖預覽（手機不支援直接分享時用） -->
+<div id="shareView" hidden>
+  <div class="small" style="color:#e8e2cc;text-align:center">長按圖片 →「儲存」或「加入照片」，再到 IG、LINE 分享。<br>貼文文字已經複製好了。</div>
+  <img id="shareImg" alt="迴向卡">
+  <button class="btn ghost" id="shareClose">關閉</button>
+</div>
+
 <!-- 口袋模式 -->
 <div id="pocket" hidden>
   <div class="t" id="pTime">00:00</div>
@@ -339,6 +356,7 @@ label{font-size:12px;color:var(--muted);display:block;margin-bottom:6px}
   </div>
 
   <div class="panel" id="editBox" style="display:flex;flex-direction:column;gap:12px">
+    <div class="small" id="timeSpan" hidden style="line-height:1.8;color:#e8e2cc"></div>
     <div class="small muted" id="gapNote" hidden>中途有鎖屏，那段距離是用直線估算的，可以對照手錶或手機健康 app 修正。</div>
     <div id="manualFields" hidden style="display:flex;flex-direction:column;gap:12px">
       <div><label for="ePerson">迴向給</label><select id="ePerson"></select></div>
@@ -375,7 +393,11 @@ label{font-size:12px;color:var(--muted);display:block;margin-bottom:6px}
       <div style="width:40px;height:1px;background:var(--gold);margin:18px auto 12px"></div>
       <div class="small muted" style="letter-spacing:2px">跑伴 · 伴夢伴醒</div>
     </div>
-    <p class="small muted" style="text-align:center;margin:0">截圖就可以傳給他。</p>
+    <div class="row" style="gap:10px">
+      <button class="btn" id="shareStory" style="flex:1">分享限時動態<small style="display:block;font-size:11px;font-weight:400">直長 9:16</small></button>
+      <button class="btn" id="sharePost" style="flex:1">分享貼文<small style="display:block;font-size:11px;font-weight:400">IG／Threads 4:5</small></button>
+    </div>
+    <p class="small muted" style="text-align:center;margin:0" id="shareNote">按分享會產生一張圖，貼文文字也會一起複製好，貼上就能發。</p>
     <button class="btn ghost" id="homeBtn">回首頁</button>
   </div>
 </div>
@@ -834,7 +856,6 @@ function tick(){
   var sec=elapsed(),km=R.dist/1000;
   $('rTime').textContent=fmtTime(sec);
   $('rDist').textContent=km.toFixed(2);
-  $('rPace').textContent=R.dist>50?fmtPace(sec/km):'--';
   $('rSteps').textContent=R.steps.toLocaleString();
   $('pTime').textContent=fmtTime(sec);$('pCount').textContent='已念 '+R.times+' 遍';$('pDist').textContent=km.toFixed(2)+' 公里';
   $('oTime').textContent=fmtTime(sec);$('oCount').textContent=R.times;$('pDist').hidden=!distSelf();
@@ -1003,6 +1024,9 @@ $('endBtn').onclick=function(){
   $('manualFields').hidden=true;
   $('delBtn').hidden=true;$('cancelBtn').hidden=true;$('durErr').hidden=true;
   $('doneSub').textContent='今天的跑伴完成了';$('doneTitle').textContent='辛苦了，也謝謝你。';
+  var hm=function(t){var d=new Date(t);return ('0'+d.getHours()).slice(-2)+':'+('0'+d.getMinutes()).slice(-2);};
+  $('timeSpan').textContent='這次從 '+hm(R.start)+' 到 '+hm(Date.now())+'。'+(distSelf()?'':'沒有 Strava 的話，打開手機的健康 app 看今天的「步行＋跑步距離」，用回來後的數字減掉出門前的就是這次的公里數。');
+  $('timeSpan').hidden=false;
   $('editBox').hidden=false;$('cardWrap').hidden=true;
   show('done');
 };
@@ -1040,7 +1064,7 @@ function openEditor(run){
   $('eKm').value=run?String(run.km):'';$('eKm').placeholder='例如 3.11';$('eKmLabel').textContent='公里';
   $('eTimes').value=run?String(run.times):'';
   $('eWish').value=(run&&run.wish)||person(sel.value).wish||'';
-  $('gapNote').hidden=true;$('durErr').hidden=true;$('manualFields').hidden=false;
+  $('gapNote').hidden=true;$('durErr').hidden=true;$('manualFields').hidden=false;$('timeSpan').hidden=true;
   $('delBtn').hidden=!run;$('delBtn').textContent='刪除這筆紀錄';$('delBtn').dataset.armed='';
   $('cancelBtn').hidden=false;
   $('doneSub').textContent=run?'修改紀錄':'補記一筆';
@@ -1092,7 +1116,101 @@ $('saveBtn').onclick=function(){
   $('cKm').textContent=km.toFixed(1);$('cTimes').textContent=times;$('cMin').textContent=Math.max(1,Math.round(R.secs/60));
   $('cTo').textContent=p.name;$('cWish').textContent=wish;
   $('editBox').hidden=true;$('cardWrap').hidden=false;
+  prepareShare({y:d.getFullYear(),m:d.getMonth()+1,d:d.getDate(),km:km,times:times,mins:Math.max(1,Math.round(R.secs/60)),to:p.name,wish:wish});
 };
+/* ---------- 分享迴向卡：產生圖片 + 複製貼文文字 ---------- */
+var SITE='monawaketw.github.io/RunHalf';
+var shareFiles={},shareData=null;
+function drawCard(c,W,H){
+  var x=c.getContext('2d'),gold='#c8a84b',cx=W/2;
+  x.fillStyle='#1a1b2e';x.fillRect(0,0,W,H);
+  // 星星（固定位置，每次一樣）
+  var seed=7;function rnd(){seed=(seed*9301+49297)%233280;return seed/233280;}
+  for(var i=0;i<70;i++){x.globalAlpha=0.25+rnd()*0.6;x.fillStyle='#ffffff';x.beginPath();x.arc(rnd()*W,rnd()*H*0.8,0.8+rnd()*2.2,0,Math.PI*2);x.fill();}
+  x.globalAlpha=1;
+  // 四角 L 形金框
+  x.strokeStyle=gold;x.lineWidth=4;var m=56,L=72;
+  [[m,m,1,1],[W-m,m,-1,1],[m,H-m,1,-1],[W-m,H-m,-1,-1]].forEach(function(k){x.beginPath();x.moveTo(k[0],k[1]+L*k[3]);x.lineTo(k[0],k[1]);x.lineTo(k[0]+L*k[2],k[1]);x.stroke();});
+  // 底部金色半圓太陽
+  var sunR=W*0.3;x.fillStyle=gold;x.beginPath();x.arc(cx,H+sunR*0.35,sunR,Math.PI,0);x.fill();
+  x.fillStyle='#1a1b2e';x.textAlign='center';x.textBaseline='alphabetic';
+  x.font='700 40px "Noto Serif TC",serif';x.fillText('伴夢伴醒',cx,H-sunR*0.32);
+  x.font='500 24px "Noto Sans TC",sans-serif';x.fillText(SITE,cx,H-sunR*0.32+42);
+  var D=shareData,tall=H/W>1.5,top=tall?H*0.16:H*0.1,sc=tall?1.15:1;
+  x.textAlign='center';
+  x.fillStyle=gold;x.font='700 '+Math.round(52*sc)+'px "Noto Serif TC",serif';
+  if(x.letterSpacing!==undefined)x.letterSpacing='12px';
+  x.fillText('跑 伴',cx,top);
+  if(x.letterSpacing!==undefined)x.letterSpacing='0px';
+  x.fillStyle='#b8b9cc';x.font='400 '+Math.round(30*sc)+'px "Noto Sans TC",sans-serif';
+  x.fillText(D.y+' 年 '+D.m+' 月 '+D.d+' 日',cx,top+56*sc);
+  // 太陽鴿與夜鴿
+  var dy=top+(tall?300:200)*sc,s=2.6*sc;
+  x.save();x.translate(cx-75*s,dy-35*s);x.scale(s,s);
+  x.fillStyle='#F5A623';x.beginPath();x.ellipse(50,44,26,20,0,0,Math.PI*2);x.fill();x.beginPath();x.arc(38,30,12,0,Math.PI*2);x.fill();
+  x.fillStyle='#3E2000';x.beginPath();x.arc(35,28,2,0,Math.PI*2);x.fill();
+  x.fillStyle='#FFD700';x.beginPath();x.arc(54,46,7,0,Math.PI*2);x.fill();
+  x.fillStyle='#3D3580';x.beginPath();x.ellipse(100,44,26,20,0,0,Math.PI*2);x.fill();x.beginPath();x.arc(112,30,12,0,Math.PI*2);x.fill();
+  x.fillStyle='#f3efe2';x.beginPath();x.arc(115,28,2,0,Math.PI*2);x.fill();
+  x.fillStyle=gold;x.beginPath();x.arc(100,47,7,0,Math.PI*2);x.fill();
+  x.fillStyle='#3D3580';x.beginPath();x.arc(103,44.5,6,0,Math.PI*2);x.fill();
+  x.restore();
+  // 三個數字
+  var ny=dy+(tall?320:260)*sc;
+  x.fillStyle='#b8b9cc';x.font='400 '+Math.round(30*sc)+'px "Noto Sans TC",sans-serif';x.fillText('今天這一段路',cx,ny-110*sc);
+  var cols=[[kmText(D.km),'公里'],[String(D.times),'遍心經'],[String(D.mins),'分鐘']],gap=W*0.27;
+  cols.forEach(function(col,i){
+    var px=cx+(i-1)*gap;
+    x.fillStyle=gold;x.font='700 '+Math.round(88*sc)+'px "Noto Sans TC",sans-serif';x.fillText(col[0],px,ny);
+    x.fillStyle='#b8b9cc';x.font='400 '+Math.round(28*sc)+'px "Noto Sans TC",sans-serif';x.fillText(col[1],px,ny+46*sc);
+  });
+  // 迴向
+  var wy=ny+(tall?260:170)*sc;
+  x.fillStyle='#f3efe2';x.font='700 '+Math.round(54*sc)+'px "Noto Serif TC",serif';x.fillText('迴向給 '+D.to,cx,wy);
+  x.fillStyle='#e8e2cc';x.font='500 '+Math.round(38*sc)+'px "Noto Serif TC",serif';
+  wrapText(x,D.wish,cx,wy+76*sc,W-220,54*sc);
+}
+function kmText(k){return String(Math.round(k*100)/100);}
+function wrapText(x,t,cx,y,maxW,lh){
+  var line='',lines=[];
+  for(var i=0;i<t.length;i++){var test=line+t[i];if(x.measureText(test).width>maxW&&line){lines.push(line);line=t[i];}else line=test;}
+  if(line)lines.push(line);
+  lines.slice(0,3).forEach(function(l,i){x.fillText(l,cx,y+i*lh);});
+}
+function shareCaption(){
+  var D=shareData;
+  return '今天跑了 '+kmText(D.km)+' 公里，心經 '+D.times+' 遍，迴向給'+D.to+'。\n'+D.wish+'\n\n不比快、不比遠，一起邊跑邊念：'+SITE+'\n#伴夢伴醒 #跑伴 #禪跑 #心經 #迴向';
+}
+function prepareShare(data){
+  shareData=data;shareFiles={};
+  var fontsReady=(document.fonts&&document.fonts.load)?Promise.all([document.fonts.load('700 40px "Noto Serif TC"'),document.fonts.load('700 40px "Noto Sans TC"'),document.fonts.load('400 30px "Noto Sans TC"')]).catch(function(){}):Promise.resolve();
+  fontsReady.then(function(){
+    [['story',1080,1920],['post',1080,1350]].forEach(function(f){
+      var c=document.createElement('canvas');c.width=f[1];c.height=f[2];
+      try{drawCard(c,f[1],f[2]);}catch(e){return;}
+      c.toBlob(function(b){if(b)shareFiles[f[0]]={blob:b,url:URL.createObjectURL(b)};},'image/png');
+    });
+  });
+}
+function copyCaption(){
+  var t=shareCaption();
+  try{if(navigator.clipboard&&navigator.clipboard.writeText)return navigator.clipboard.writeText(t).catch(function(){});}catch(e){}
+}
+function doShare(kind){
+  var f=shareFiles[kind];
+  if(!f){$('shareNote').textContent='圖片還在準備，請再按一次。';return;}
+  copyCaption();
+  var file=null;try{file=new File([f.blob],'paoban-'+kind+'.png',{type:'image/png'});}catch(e){}
+  if(file&&navigator.canShare&&navigator.canShare({files:[file]})){
+    navigator.share({files:[file],text:shareCaption()}).then(function(){$('shareNote').textContent='分享好了。貼文文字也已複製，需要的話貼上就好。';}).catch(function(){});
+  }else{
+    $('shareImg').src=f.url;$('shareView').hidden=false;
+  }
+}
+$('shareStory').onclick=function(){doShare('story');};
+$('sharePost').onclick=function(){doShare('post');};
+$('shareClose').onclick=function(){$('shareView').hidden=true;};
+
 $('homeBtn').onclick=function(){R=null;renderHome();show('home');};
 
 if(!('geolocation' in navigator))$('homeStatus').textContent='這個瀏覽器不支援定位，距離需要手動填。';
