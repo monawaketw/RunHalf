@@ -158,6 +158,11 @@ label{font-size:12px;color:var(--muted);display:block;margin-bottom:6px}
   </div>
 
   <div class="panel" id="tempoBox">
+    <div>
+      <label for="voiceSel">陪念聲音</label>
+      <select id="voiceSel"><option value="fish">木魚聲</option><option value="mute">只看字，不出聲</option></select>
+    </div>
+    <div id="tempoCtrl" style="margin-top:14px">
     <div class="row between">
       <div>
         <div class="small muted">朗誦節奏 <span id="cadNote"></span></div>
@@ -173,11 +178,9 @@ label{font-size:12px;color:var(--muted);display:block;margin-bottom:6px}
       <button class="chip" id="per2" aria-pressed="false">兩步一字</button>
       <button class="chip" id="followCad" aria-pressed="true">跟隨步頻</button>
     </div>
-    <div style="margin-top:12px">
-      <label for="voiceSel">陪念聲音</label>
-      <select id="voiceSel"><option value="fish">木魚聲</option><option value="mute">只看字，不出聲</option></select>
-    </div>
     <div class="small muted" style="margin-top:10px">這個節奏約 <span id="perRound">-</span> 念完一遍</div>
+    </div>
+    <div class="small muted" id="voiceNote" style="margin-top:10px" hidden>用自然的速度慢慢念，跟著默念就好。</div>
   </div>
 
   <div class="row" style="gap:10px">
@@ -413,13 +416,15 @@ function voiceObj(){var vs=zhVoices();for(var i=0;i<vs.length;i++)if(vs[i].voice
 function fillVoices(){
   var sel=$('voiceSel'),vs=zhVoices();
   while(sel.options.length>2)sel.remove(2);
-  vs.forEach(function(v){
+  // 只留兩個聲音，取名小夢、小醒（優先用台灣的聲音）
+  var names=['小夢','小醒'];
+  vs.slice(0,2).forEach(function(v,i){
     var o=document.createElement('option');o.value=v.voiceURI;
-    var where=/TW/i.test(v.lang)?'台灣':/HK/i.test(v.lang)?'香港':'中國';
-    o.textContent='朗誦 · '+v.name.replace(/\s*\(.*\)\s*/,'')+'（'+where+'）';
+    o.textContent='朗誦 · '+names[i];
     sel.appendChild(o);
   });
   if(isVoice()&&!voiceObj())store.voice='fish';
+  if(isVoice()&&vs.slice(0,2).indexOf(voiceObj())<0)store.voice='fish';
   sel.value=store.voice||'fish';
 }
 if(TTS){fillVoices();try{TTS.addEventListener('voiceschanged',fillVoices);}catch(e){TTS.onvoiceschanged=fillVoices;}}
@@ -431,8 +436,8 @@ function speakPhrase(pi){
   var my=++sp.token;clearInterval(sp.timer);clearTimeout(sp.guard);
   var phrase=PHRASES[pi], start=PH_START[pi];
   R.charIdx=start-1;renderLine();
-  var secPerChar=60/currentBpm()*store.per;
-  var rate=Math.min(2,Math.max(0.5,(1/secPerChar)/4));
+  // 朗誦用固定的自然速度，不跟步頻
+  var rate=0.9, gapMs=350;
   var u=new SpeechSynthesisUtterance(spoken(phrase));
   u.voice=v;u.lang=v.lang;u.rate=rate;
   // sp.k = 這個聲音在速度 1 時，念一個字實際花幾毫秒；每念完一句就重新校正
@@ -447,7 +452,7 @@ function speakPhrase(pi){
     }
     if(R){R.charIdx=start+phrase.length-1;renderLine();}
     var np=pi+1;if(np>=PHRASES.length){np=0;R.times++;}
-    setTimeout(function(){if(my===sp.token)speakPhrase(np);},secPerChar*500);
+    setTimeout(function(){if(my===sp.token)speakPhrase(np);},gapMs);
   }
   // 有些手機會回報「現在念到第幾個字」，有的話就直接對齊
   u.onboundary=function(e){
@@ -468,6 +473,7 @@ function speakPhrase(pi){
 function currentPhrase(){return R&&R.charIdx>=0?CHARS[Math.min(R.charIdx,TOTAL-1)].pi:0;}
 $('voiceSel').onchange=function(){
   store.voice=this.value;save();sp.k=0;
+  syncTempoButtons();
   if(!R||R.ended)return;
   stopSpeech();
   if(isVoice()){unlockIOSAudio();speakPhrase(currentPhrase());}
@@ -497,6 +503,8 @@ function syncTempoButtons(){
   $('per1').setAttribute('aria-pressed',String(store.per===1));
   $('per2').setAttribute('aria-pressed',String(store.per===2));
   $('followCad').setAttribute('aria-pressed',String(store.follow!==false));
+  $('tempoCtrl').hidden=isVoice();
+  $('voiceNote').hidden=!isVoice();
 }
 $('slower').onclick=function(){store.bpm=Math.max(60,currentBpm()-4);store.follow=false;save();syncTempoButtons();tick();};
 $('faster').onclick=function(){store.bpm=Math.min(200,currentBpm()+4);store.follow=false;save();syncTempoButtons();tick();};
@@ -530,7 +538,7 @@ $('startBtn').onclick=function(){
   keepAwake();
   timerId=setInterval(tick,500);
   if(audio)schedId=setInterval(scheduler,25);
-  if(store.mode==='follow'){fillVoices();if(isVoice())speakPhrase(0);}
+  if(store.mode==='follow'){fillVoices();syncTempoButtons();if(isVoice())speakPhrase(0);}
   show('run');tick();
 };
 
