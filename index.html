@@ -757,7 +757,7 @@ $('addForm').addEventListener('submit',function(e){
 Array.prototype.forEach.call(document.querySelectorAll('#listens button'),function(b){b.onclick=function(){store.listen=b.dataset.listen;save();renderHome();};});
 // 朗誦：選小夢或小醒，點了先試聽一句
 // 小夢念得慢、小醒念得快，名字後面的括號讓人一看就知道
-var VOICE_NAMES=['小夢（慢）','小醒（快）'], VOICE_RATES=[0.8,1.1];
+var VOICE_NAMES=['小夢（慢）','小醒（快）'], VOICE_RATES=[0.65,0.8];
 function voiceRate(){var vs=zhVoices().slice(0,2);for(var i=0;i<vs.length;i++)if(vs[i].voiceURI===store.voice)return VOICE_RATES[i];return VOICE_RATES[0];}
 function renderVoicePick(){
   var box=$('voiceChips'),vs=zhVoices().slice(0,2),names=VOICE_NAMES;
@@ -1378,7 +1378,7 @@ function wrapText(x,t,cx,y,maxW,lh){
 }
 function shareCaption(){
   var D=shareData;
-  return '今天跑了 '+kmText(D.km)+' 公里，心經 '+D.times+' 遍，迴向給'+D.to+'。\n'+D.wish+'\n\n不比快、不比遠，一起邊跑邊念：'+SITE+'\n#伴夢伴醒 #跑伴 #禪跑 #心經 #迴向';
+  return '今天跑了 '+kmText(D.km)+' 公里，心經 '+D.times+' 遍，迴向給'+D.to+'。\n'+D.wish+'\n\n不比快、不比遠，一起走走路、練練心：'+SITE+'\n#伴夢伴醒 #跑伴 #禪跑 #心經 #迴向';
 }
 function prepareShare(data){
   shareData=data;shareFiles={};
@@ -1457,7 +1457,7 @@ reportHistory();flushOutbox();loadTogether();
 
 /* ---------- 分享跑伴給更多人 ---------- */
 var INVITE_URL='https://monawaketw.github.io/RunHalf/';
-var INVITE_TEXT='我最近在用「跑伴」，散步或跑步時跟著木魚念心經，念完把這段路迴向給想祝福的人。免費，不用下載，手機打開就能用：';
+var INVITE_TEXT='我最近在用「跑伴」，走路或跑步的時候，讓心跟著腳步慢下來，走完把這段路送給一個想祝福的人。免費，不用下載，手機打開就能用：';
 Array.prototype.forEach.call(document.querySelectorAll('[data-invite]'),function(btn){
   btn.onclick=function(){
     var msg=btn.parentNode.querySelector('[data-invite-msg]');
