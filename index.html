@@ -757,7 +757,7 @@ $('addForm').addEventListener('submit',function(e){
 Array.prototype.forEach.call(document.querySelectorAll('#listens button'),function(b){b.onclick=function(){store.listen=b.dataset.listen;save();renderHome();};});
 // 朗誦：選小夢或小醒，點了先試聽一句
 // 小夢念得慢、小醒念得快，名字後面的括號讓人一看就知道
-var VOICE_NAMES=['小夢（慢）','小醒（快）'], VOICE_RATES=[0.65,0.8];
+var VOICE_NAMES=['小夢（慢）','小醒（快）'], VOICE_RATES=[0.52,0.8];
 function voiceRate(){var vs=zhVoices().slice(0,2);for(var i=0;i<vs.length;i++)if(vs[i].voiceURI===store.voice)return VOICE_RATES[i];return VOICE_RATES[0];}
 function renderVoicePick(){
   var box=$('voiceChips'),vs=zhVoices().slice(0,2),names=VOICE_NAMES;
