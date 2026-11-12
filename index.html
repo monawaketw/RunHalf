@@ -198,6 +198,21 @@ label{font-size:12px;color:var(--muted);display:block;margin-bottom:6px}
       <button data-listen="voice" aria-pressed="false">朗誦<small>聽著默念</small></button>
       <button data-listen="music" aria-pressed="false">背景音樂<small>自己步調背</small></button>
     </div>
+    <div id="fishPick" hidden style="margin-top:10px">
+      <div class="small muted" style="margin-bottom:8px">節奏</div>
+      <div class="row" style="gap:8px;flex-wrap:wrap">
+        <button type="button" class="chip" data-tempo="follow">跟著腳步</button>
+        <button type="button" class="chip" data-tempo="slow">超慢跑 · 固定節奏</button>
+      </div>
+      <div id="slowPick" hidden style="margin-top:10px">
+        <div class="row" style="gap:8px;flex-wrap:wrap">
+          <button type="button" class="chip" data-slow="160">160</button>
+          <button type="button" class="chip" data-slow="170">170</button>
+          <button type="button" class="chip" data-slow="180">180</button>
+        </div>
+        <div class="small muted" style="margin-top:8px;line-height:1.7">每分鐘木魚敲幾下，腳步就跟著踩幾步。剛開始可以從 160 慢慢來，兩步念一個字。</div>
+      </div>
+    </div>
     <div id="voicePick" hidden style="margin-top:10px">
       <div class="small muted" style="margin-bottom:8px">選一個聲音（點了會試聽）</div>
       <div class="row" id="voiceChips" style="gap:8px;flex-wrap:wrap"></div>
@@ -242,7 +257,7 @@ label{font-size:12px;color:var(--muted);display:block;margin-bottom:6px}
     </ol>
     <h3>今天想聽什麼</h3>
     <ul>
-      <li><b>木魚</b>：跟著你的腳步快慢敲，一聲一個字亮起來，適合會背的人。念完一整部會自動算一遍。</li>
+      <li><b>木魚</b>：跟著你的腳步快慢敲，一聲一個字亮起來，適合會背的人。念完一整部會自動算一遍。喜歡超慢跑的話，節奏選「超慢跑 · 固定節奏」，木魚會像節拍器一樣穩穩地敲（160、170、180 下），腳步跟著踩就好。</li>
       <li><b>朗誦</b>：小夢念得慢、小醒念得快一點，選順耳的跟著默念就好，不會背也沒關係。念完一整部會自動算一遍。還可以選搭配：純朗誦、配背景音樂（音樂會放小聲），或配木魚（念一個字敲一聲）。</li>
       <li><b>背景音樂</b>：放伴夢伴醒的音樂，畫面顯示全文，照自己的步調背，念完自己計次。想安靜的話，跑步畫面上可以把音樂關掉。</li>
     </ul>
@@ -527,7 +542,7 @@ function renderHome(){
   $('streak').innerHTML=st>0?st+'<span> 天</span>':'<small>今天開始</small>';
   renderPeople();
   Array.prototype.forEach.call(document.querySelectorAll('#listens button'),function(b){b.setAttribute('aria-pressed',String(b.dataset.listen===store.listen));});
-  renderVoicePick();
+  renderVoicePick();renderFishPick();
   Array.prototype.forEach.call(document.querySelectorAll('#dists button'),function(b){b.setAttribute('aria-pressed',String(b.dataset.dist===(distSelf()?'self':'other')));});
 }
 
@@ -778,6 +793,21 @@ function renderVoicePick(){
     box.appendChild(c);
   });
 }
+// 木魚的節奏：跟著腳步（自動），或超慢跑固定節奏（像節拍器）
+function fishTempo(){return store.fishTempo||'follow';}
+function slowBpm(){return store.slowBpm||180;}
+function renderFishPick(){
+  $('fishPick').hidden=(store.listen!=='fish');
+  Array.prototype.forEach.call(document.querySelectorAll('#fishPick [data-tempo]'),function(b){b.setAttribute('aria-pressed',String(b.dataset.tempo===fishTempo()));});
+  $('slowPick').hidden=(fishTempo()!=='slow');
+  Array.prototype.forEach.call(document.querySelectorAll('#fishPick [data-slow]'),function(b){b.setAttribute('aria-pressed',String(+b.dataset.slow===slowBpm()));});
+}
+Array.prototype.forEach.call(document.querySelectorAll('#fishPick [data-tempo]'),function(b){b.onclick=function(){
+  store.fishTempo=b.dataset.tempo;
+  if(store.fishTempo==='slow')store.per=2; // 超慢跑步伐很密，兩步念一個字比較跟得上
+  save();renderFishPick();
+};});
+Array.prototype.forEach.call(document.querySelectorAll('#fishPick [data-slow]'),function(b){b.onclick=function(){store.slowBpm=+b.dataset.slow;save();renderFishPick();};});
 // 朗誦的搭配：純朗誦、配背景音樂（音樂放小聲）、配木魚（一個字一聲）
 function voiceWith(){return store.voiceWith||'none';}
 function renderWith(){Array.prototype.forEach.call(document.querySelectorAll('#withChips button'),function(b){b.setAttribute('aria-pressed',String(b.dataset.with===voiceWith()));});}
@@ -790,12 +820,17 @@ function applyListen(){
     store.mode='follow';store.voice=ok?store.voicePick:(vs[0]?vs[0].voiceURI:'fish');
   }
   else if(l==='music'){store.mode='self';if(store.bgm===undefined)store.bgm=true;}
-  else{store.mode='follow';store.voice='fish';}
+  else{
+    store.mode='follow';store.voice='fish';
+    if(fishTempo()==='slow'){store.follow=false;store.bpm=slowBpm();}
+    else store.follow=true;
+  }
   save();
 }
 function withLabel(){return {music:' · 配音樂',fish:' · 配木魚'}[voiceWith()]||'';}
 function listenLabel(){
   if(store.listen==='voice'){var vs=zhVoices().slice(0,2);for(var i=0;i<vs.length;i++)if(vs[i].voiceURI===store.voice)return '朗誦 · '+VOICE_NAMES[i]+withLabel();return '朗誦'+withLabel();}
+  if(store.listen==='fish'&&fishTempo()==='slow')return '木魚 · 超慢跑 '+slowBpm();
   return {fish:'木魚',music:'背景音樂'}[store.listen]||'';
 }
 // 距離：預設交給 Strava／手錶（可以鎖屏），或跑伴自己用 GPS 記（螢幕要亮著）
@@ -818,13 +853,30 @@ function onMotion(e){
   mot.smooth=mot.smooth*0.75+m*0.25;
   mot.base=mot.base*0.98+m*0.02;
   var d=mot.smooth-mot.base, now=Date.now();
-  if(!mot.above&&d>1.1&&now-mot.last>260){mot.above=true;mot.last=now;R.steps++;R.stepTimes.push(now);}
-  else if(mot.above&&d<0.2){mot.above=false;}
+  if(!mot.above&&d>0.9&&now-mot.last>270){mot.above=true;mot.last=now;R.steps++;R.stepTimes.push(now);}
+  else if(mot.above&&d<0.15){mot.above=false;}
 }
 function updateCadence(){
-  var now=Date.now();R.stepTimes=R.stepTimes.filter(function(t){return now-t<10000;});
-  if(R.stepTimes.length>=8){var span=(now-R.stepTimes[0])/1000;R.cadence=Math.round(R.stepTimes.length/Math.max(span,3)*60);}
-  else R.cadence=0;
+  var now=Date.now();R.stepTimes=R.stepTimes.filter(function(t){return now-t<8000;});
+  var ts=R.stepTimes;
+  if(ts.length>=6){
+    // 每一步之間隔多久，取中間值，漏抓或多抓一步都不會影響太多
+    var gaps=[];for(var i=1;i<ts.length;i++)gaps.push(ts[i]-ts[i-1]);
+    gaps.sort(function(a,b){return a-b;});
+    // 漏抓一步時，間隔會變成兩倍長；用比較短的間隔當基準，把長間隔拆回一步一步
+    var base=gaps[Math.floor(gaps.length*0.3)],per=[];
+    gaps.forEach(function(g){var n=Math.max(1,Math.min(3,Math.round(g/base)));per.push(g/n);});
+    per.sort(function(a,b){return a-b;});
+    var raw=60000/per[Math.floor(per.length/2)];
+    if(raw>=60&&raw<=220){
+      R.cadRaw=R.cadRaw?R.cadRaw*0.75+raw*0.25:raw;   // 慢慢靠過去
+      R.cadAt=now;
+      var target=Math.round(R.cadRaw/2)*2;
+      if(!R.cadence||Math.abs(target-R.cadence)>=4)R.cadence=target; // 差 4 步以上才換節奏
+    }
+  }
+  // 暫時沒抓到腳步（停紅燈、手機換手），先維持原本的節奏 10 秒
+  if(R.cadence&&now-(R.cadAt||0)>10000){R.cadence=0;R.cadRaw=0;}
 }
 
 /* GPS */
@@ -886,8 +938,8 @@ function startVoiceBgm(){
       vbgm={el:el};
       if(audio&&audio.ctx&&audio.ctx.createMediaElementSource){
         var src=audio.ctx.createMediaElementSource(el),g=audio.ctx.createGain();
-        g.gain.value=0.3;src.connect(g);g.connect(audio.ctx.destination);
-      }else el.volume=0.3;
+        g.gain.value=0.55;src.connect(g);g.connect(audio.ctx.destination);
+      }else el.volume=0.55;
     }
     var p=vbgm.el.play();if(p&&p.catch)p.catch(function(){});
   }catch(e){}
