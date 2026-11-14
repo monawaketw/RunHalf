@@ -275,6 +275,12 @@ label{font-size:12px;color:var(--muted);display:block;margin-bottom:6px}
       <li>手機可以直接鎖屏放口袋，木魚聲和朗誦會繼續。</li>
       <li>跑完在跑伴按「結束」，填上 Strava 的公里數，存成迴向卡。</li>
     </ol>
+    <h3>什麼時候要自己按 ＋1</h3>
+    <ul>
+      <li><b>木魚、朗誦</b>：跟著念完一整部，跑伴會自己記一遍，會「叮咚」一聲，<b>不用按</b>。如果你念得比較快、提早念完了，再按 ＋1，經文會從頭開始。</li>
+      <li><b>背景音樂</b>：跑伴不知道你念到哪裡，念完一遍<b>要自己按</b> ＋1。</li>
+      <li>不小心多記了，按耳機的「上一首」可以減一。</li>
+    </ul>
     <h3>跑步中怎麼計次</h3>
     <ul>
       <li><b>耳機按鍵</b>：播放／暫停或下一首 = ＋1 遍，上一首 = 減一。藍牙耳機、有線耳機、智慧手錶的音樂控制都可以。</li>
@@ -387,6 +393,7 @@ label{font-size:12px;color:var(--muted);display:block;margin-bottom:6px}
   </div>
 
   <div class="panel sutra" id="sutraBox">
+    <div class="small" id="countHint" style="color:var(--gold);margin-bottom:10px;line-height:1.7"></div>
     <div class="small muted" style="margin-bottom:10px">般若波羅蜜多心經 · 第 <span id="roundNo">1</span> 遍</div>
     <div id="followView">
       <div class="line" id="line"></div>
@@ -1007,8 +1014,23 @@ document.addEventListener('visibilitychange',function(){
 function advanceChar(){
   if(!R||R.ended)return;
   R.charIdx++;
-  if(R.charIdx>=TOTAL){R.charIdx=0;R.times++;}
+  if(R.charIdx>=TOTAL){R.charIdx=0;R.times++;autoRound();}
   renderLine();
+}
+// 木魚、朗誦念完一整部會自動記一遍：叮咚一聲讓人知道有記到（木魚模式再念出第幾遍）
+function autoRound(){
+  chime(false);
+  if(store.mode==='follow'&&!isVoice())setTimeout(function(){if(R&&!R.ended)announce('第 '+R.times+' 遍');},450);
+  tick();
+}
+function autoCount(){return store.mode==='follow';}
+function setCountHints(){
+  var auto=autoCount();
+  $('countHint').textContent=auto?'跟著念完一整部，會自動記一遍，不用按。':'念完一遍，按耳機、鎖定畫面的播放鍵或下面的按鈕，記一遍。';
+  var b=$('plusBtn');
+  b.textContent=auto?'提早念完了？＋1 從頭開始':'念完一遍 ＋1';
+  b.className=auto?'btn ghost':'btn';
+  $('pHint').textContent=auto?'念完會自動記遍數 · 長按 2 秒回來':'點兩下 ＋1 遍 · 長按 2 秒回來';
 }
 function renderLine(){
   var idx=Math.max(0,R.charIdx), c=CHARS[idx], phrase=PHRASES[c.pi];
@@ -1071,7 +1093,7 @@ function speakPhrase(pi){
       if(per>80&&per<800)sp.k=sp.k*0.4+per*0.6;
     }
     if(R){R.charIdx=start+phrase.length-1;renderLine();}
-    var np=pi+1;if(np>=PHRASES.length){np=0;R.times++;}
+    var np=pi+1;if(np>=PHRASES.length){np=0;R.times++;autoRound();}
     setTimeout(function(){if(my===sp.token)speakPhrase(np);},gapMs);
   }
   // 有些手機會回報「現在念到第幾個字」，有的話就直接對齊
@@ -1172,7 +1194,7 @@ $('startBtn').onclick=function(){
   if(store.mode!=='quiet')setupMediaKeys(true);
   $('pCount').hidden=$('pHint').hidden=false;
   if(store.mode==='quiet'){$('pCount').hidden=true;$('pHint').textContent='長按 2 秒回來';}
-  else $('pHint').textContent='點兩下 ＋1 遍 · 長按 2 秒回來';
+  else setCountHints();
   show('run');tick();
 };
 
