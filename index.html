@@ -1003,7 +1003,7 @@ function scheduler(){
     var entry={t:audio.next,nodes:store.voice!=='mute'?knock(audio.next):[],done:false,gen:audio.gen||0};
     audio.pending.push(entry);
     var delay=Math.max(0,(audio.next-ctx.currentTime)*1000);
-    (function(e){setTimeout(function(){if(audio&&audio.gen===e.gen&&!e.done){e.done=true;advanceChar();}},delay);})(entry);
+    (function(e){setTimeout(function(){if(audio&&(audio.gen||0)===e.gen&&!e.done){e.done=true;advanceChar();}},delay);})(entry);
     audio.next+=interval();
   }
 }
